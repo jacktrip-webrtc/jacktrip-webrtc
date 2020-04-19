@@ -38,7 +38,7 @@ function handleTrack(e, id) {
 function createNewPeer(id) {
   if(peerConnections[id] === undefined) {
     // Create RTCPeerConnection object and set custom property
-    peerConnections[id] = new RTCPeerConnection(mediaConfiguration);
+    peerConnections[id] = new RTCPeerConnection(configuration);
     peerConnections[id].id = id;
     remoteStream[id] = new MediaStream();
 
