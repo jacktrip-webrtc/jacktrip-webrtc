@@ -3,14 +3,78 @@
   <head>
     <meta charset="utf-8">
     <title>Room</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="/css/room/index.css">
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
     <script src="/js/room/client.js" charset="utf-8"></script>
     <script src="/socket.io/socket.io.js" charset="utf-8"></script>
   </head>
   <body>
-    <div id="stream-elements">
-      <video id="local-video" autoplay muted></video>
+    <div class="container-fluid my-vh-100">
+        <div class="d-flex flex-row flex-wrap w-100 py-2" id="stream-elements">
+            <div class="embed-responsive embed-responsive-4by3 w-100 col-lg-4 col-md-6 col-sm-12 py-0 px-0 bg-black rounded">
+                <video class="embed-responsive-item" id="local-video" autoplay muted></video>
+                <div id="local-mute-message" class="embed-responsive-item w-100 h-100 invisible">
+                    <div class="position-absolute bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small">
+                        <i class="fas fa-microphone-slash text-danger my-auto mr-1"></i>
+                        <p class="mb-0 text-white">Muted</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="joinAudioModal" data-backdrop="static" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row justify-content-center mb-3">
+                            <i class="fa fa-info my-auto mr-2 text-blu"></i>
+                            <h4 class="h4 my-0">Info</h4>
+                        </div>
+                        <div class="d-flex flex-row justify-content-center mb-4">
+                            <p class="text-center leading my-0">Join with device's audio</p>
+                        </div>
+                        <button class="btn btn-blu mx-auto" type="button" name="Create room" onclick="joinAudio()">Join</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="errorModal" data-backdrop="static" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row justify-content-center mb-3">
+                            <i class="fas fa-exclamation-triangle my-auto mr-2 text-danger"></i>
+                            <h4 class="h4 my-0">Error</h4>
+                        </div>
+                        <div class="d-flex flex-row justify-content-center mb-4">
+                            <p id="errorMessage" class="text-center leading my-0"></p>
+                        </div>
+                        <a class="btn btn-blu mx-auto" href="/" >Go back to home</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <div class="btn-toolbar w-100 d-flex justify-content-center button-controls fixed-bottom" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group mr-2" role="group" aria-label="Mute group">
+            <button id="audioButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteAudio()"><i id="audioIcon" class="fas fa-microphone"></i></button>
+        </div>
+        <div class="btn-group ml-2" role="group" aria-label="Mute group">
+            <button id="videoutton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteVideo()"><i id="videoIcon" class="fas fa-video"></i></button>
+        </div>
+    </div>
+
     <script src="/js/room/index.js" charset="utf-8"></script>
   </body>
 </html>

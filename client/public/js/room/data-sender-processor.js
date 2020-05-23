@@ -3,7 +3,7 @@
 class DataSenderProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
-        this.n = 0; // Counter
+        this.packet_n = 0; // Packet counter
     }
 
 
@@ -15,7 +15,13 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         const inputChannel0 = input[0];
 
         // Send data to DataNode
-        this.port.postMessage(inputChannel0);
+        this.port.postMessage({
+            samples: inputChannel0,
+            packet_n: this.packet_n
+        });
+
+        // Update packet number
+        this.packet_n++;
 
         // To keep this processor alive.
         return true;

@@ -1,3 +1,99 @@
+body {
+    font-family: 'Montserrat', sans-serif;
+    /* background: #6d6ae6; */
+    background: #2e2e33;
+}
+
+.my-vh-100 {
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
+    height: 100% ;
+}
+
+.bottom-right {
+    bottom: 0;
+    right: 0;
+}
+
+.rounded-top-left {
+    border-top-left-radius: 0.25rem !important;
+}
+
+.text-small {
+    font-size: 12px;
+}
+
+.modal-open .modal {
+  overflow-y: hidden;
+}
+
 .mirror {
-  transform: scaleX(-1);
+    transform: scaleX(-1);
+}
+
+.text-blu {
+    color: #6d6ae6;
+}
+
+.btn-blu {
+    color: white;
+    background-color: #6d6ae6;
+    border-color: #6d6ae6;
+}
+
+.btn-blu:hover {
+    color: white;
+    background-color: #5a58bf;
+    border-color: #5a58bf;
+}
+
+.btn-blu:focus, .btn-blu.focus {
+    color: white;
+    background-color: #5a58bf;
+    border-color: #5a58bf;
+    box-shadow: 0 0 0 0.2rem #a2a1e6;
+}
+
+.btn-blu.disabled, .btn-blu:disabled {
+    color: white;
+    background-color: #a2a1e6;
+    border-color: #a2a1e6;
+}
+
+.btn-blu:not(:disabled):not(.disabled):active, .btn-blu:not(:disabled):not(.disabled).active,
+.show > .btn-blu.dropdown-toggle {
+    color: white;
+    background-color: #5a58bf;
+    border-color: #5a58bf;
+}
+
+.btn-blu:not(:disabled):not(.disabled):active:focus, .btn-blu:not(:disabled):not(.disabled).active:focus,
+.show > .btn-blu.dropdown-toggle:focus {
+  box-shadow: 0 0 0 0.2rem #a2a1e6;
+}
+
+.button-controls {
+    bottom: 20px;
+}
+
+.btn-custom {
+    opacity: 0.70;
+    transition: 0.2s;
+}
+
+.btn-custom:hover {
+    opacity: 1;
+}
+
+.medium-button {
+    width: 50px;
+    height: 50px;
+}
+
+.bg-black {
+    background: #000;
+}
+
+.bg-custom {
+    background: #2e2e33;
 }
