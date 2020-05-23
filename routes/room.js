@@ -139,8 +139,12 @@ router
 function handleSocket(io) {
   // Define socket.io functions
   io.on('connection', function (socket) {
+    // Keep track of the room for the disconnect
+    let roomJoined;
+
     // Join room
     socket.on('join', (room) => {
+      logger.info(`Socket ${socket.id} tried to join room ${room}`)
       try{
         // Check if the socket already joined a room
         let joinedRoom = Object.keys(socket.rooms)[1];
@@ -158,6 +162,12 @@ function handleSocket(io) {
 
           // Join the room
           socket.join(room, () => {
+            // Logging
+            logger.info(`Socket ${socket.id} joined room ${room}`);
+
+            // Set joined room
+            roomJoined = room;
+
             // Get clients
             let clients = [];
             Object.keys(rooms[room].users).forEach((key,index) => {
@@ -177,15 +187,19 @@ function handleSocket(io) {
         }
         else {
           // Room does not exist
-          throw new CommunicationException(`${room} does not exist`);
+          throw new CommunicationException(`Room ${room} does not exist`);
         }
       } catch (e) {
+        logger.info(e.message);
         socket.emit('communication error', e.message);
       }
     });
 
     // Signal offer to remote
     socket.on('offer', (offer, id) => {
+      // Logging
+      logger.info(`Socket ${socket.id} sent an offer to ${id}`);
+
       try {
         let room = Object.keys(socket.rooms)[1];
         if(room != undefined) {
@@ -194,15 +208,19 @@ function handleSocket(io) {
         }
         else {
           // Socket did not join any room
-          throw new CommunicationException('You must join a room before sending datas')
+          throw new CommunicationException('You must join a room before sending data')
         }
       } catch (e) {
+        logger.info(e.message);
         socket.emit('communication error', e.message);
       }
     });
 
     // Signal answer to remote
     socket.on('answer', (answer, id) => {
+      // Logging
+      logger.info(`Socket ${socket.id} sent an answer to ${id}`);
+
       try {
         let room = Object.keys(socket.rooms)[1];
         if(room != undefined) {
@@ -214,11 +232,15 @@ function handleSocket(io) {
           throw new CommunicationException('You must join a room before sending datas')
         }
       } catch (e) {
+          logger.info(e.message);
         socket.emit('communication error', e.message);
       }
     });
 
     socket.on('new candidate', (candidate, id) => {
+      // Logging
+      logger.info(`Socket ${socket.id} has got a new candidate for ${id}`);
+
       try {
         let room = Object.keys(socket.rooms)[1];
         if(room != undefined) {
@@ -230,6 +252,7 @@ function handleSocket(io) {
           throw new CommunicationException('You must join a room before sending datas')
         }
       } catch (e) {
+        logger.info(e.message);
         socket.emit('communication error', e.message);
       }
     })
@@ -238,6 +261,12 @@ function handleSocket(io) {
       let room = Object.keys(socket.rooms)[1];
       if(room != undefined) {
         socket.leave(room, () => {
+          // Logging
+          logger.info(`Socket ${socket.id} left the room ${room}`);
+
+          // Set room left
+          roomJoined = undefined;
+
           // Remove from list
           delete rooms[room].users[socket.id];
           rooms[room].num_users--;
@@ -258,25 +287,26 @@ function handleSocket(io) {
     });
 
     socket.on('disconnect', () => {
-      let room = Object.keys(socket.rooms)[1];
+      let room = roomJoined;
       if(room != undefined) {
-        socket.leave(room, () => {
-          // Remove from list
-          delete rooms[room].users[socket.id];
-          rooms[room].num_users--;
+        // Logging
+        logger.info(`Socket ${socket.id} left the room ${room}`);
 
-          // Disconnect socket
-          socket.disconnect(true);
+        // Set room left
+        roomJoined = undefined;
 
-          // Delete room
-          if(rooms[room].num_users === 0) {
-            // Start job
-            rooms[room].job.start();
-          }
+        // Remove from list
+        delete rooms[room].users[socket.id];
+        rooms[room].num_users--;
 
-          // Room left
-          socket.to(room).emit('client left', socket.id);
-        });
+        // Delete room
+        if(rooms[room].num_users === 0) {
+          // Start job
+          rooms[room].job.start();
+        }
+
+        // Room left
+        socket.to(room).emit('client left', socket.id);
       }
     })
   });
