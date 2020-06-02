@@ -1,5 +1,10 @@
 'use strict'
 
+// Connection method
+// true -> Use MediaStream to send/receive audio
+// false -> Use DataChannel and AudioWorklets
+const USE_MEDIA_AUDIO = false;
+
 // Peer configuration
 const configuration = {
   iceServers: [{
@@ -19,7 +24,7 @@ const audioContextOptions = {
     sampleRate: 48000
 }
 
-// Audio context options
+// Audio context
 let audioContext = new AudioContext(audioContextOptions);
 audioContext.suspend();
 
@@ -29,13 +34,14 @@ audioContext.onstatechange = () => {
     }
 }
 
-// Audio context
+// AudioWorklet for sending data
 class DataSenderNode extends AudioWorkletNode {
   constructor(context) {
     super(context, 'data-sender-processor');
   }
 }
 
+// AudioWorklet for receiving data
 class DataReceiverNode extends AudioWorkletNode {
     constructor(context) {
         super(context, 'data-receiver-processor');
@@ -97,12 +103,13 @@ class Client {
         this.offering = offering;
         this.peerConnection = new RTCPeerConnection(configuration);
         this.remoteVideoStream = new MediaStream();
+        this.remoteAudioStream = new MediaStream();
         this.sender = null;
         this.localAudioStream = null;
         this.localAudioSource = null;
         this.localProcessingNode = null;
         this.remoteProcessingNode = null;
-        this.remoteAudioDestination = audioContext.createMediaStreamDestination();
+        //this.remoteAudioDestination = audioContext.createMediaStreamDestination();
         this.dataChannel = null;
         this.controlChannel = null;
         this.packet_n = 0;
@@ -125,7 +132,7 @@ class Client {
         this.audioElement.id = `remote-audio-${id}`;
         this.audioElement.autoplay = true;
         // Attach stream
-        this.audioElement.srcObject = this.remoteAudioDestination.stream;
+        this.audioElement.srcObject = this.remoteAudioStream;
 
         this.muteMessage = document.createElement('div');
         this.muteMessage.id = `remote-mute-message-${id}`;
@@ -159,6 +166,10 @@ class Client {
             this.sender = this.peerConnection.addTrack(track, videoStream)
         });
 
+        audioStream.getAudioTracks().forEach(track => {
+            this.sender = this.peerConnection.addTrack(track, audioStream)
+        });
+
         // Save the localAudioStream
         this.localAudioStream = audioStream;
 
@@ -186,7 +197,14 @@ class Client {
 
         // Listener for remote tracks
         this.peerConnection.addEventListener('track', (e) => {
-            this.addVideoTrack(e.track);
+            if(e.track.kind === 'video') {
+                console.log('Video');
+                this.addVideoTrack(e.track);
+            }
+            else if(e.track.kind === 'audio') {
+                console.log('Audio');
+                this.addAudioTrack(e.track);
+            }
         });
 
         // Node for sending data
@@ -195,6 +213,9 @@ class Client {
             if(this.dataChannel.readyState === 'open' && this.otherAudioContextRunning) {
                 // Stringify the object in order to send it
                 this.dataChannel.send(JSON.stringify(event.data));
+
+                // Save time of sent data
+                performance.mark('data-sent-'+event.data.packet_n);
             }
             else {
                 console.log('Not running')
@@ -257,6 +278,12 @@ class Client {
             track.stop();
         });
 
+        // Remove tracks from stream
+        this.remoteAudioStream.getVideoTracks().forEach((track, index) => {
+            this.remoteAudioStream.removeTrack(track);
+            track.stop();
+        });
+
         // Remove DOM elements
         this.videoElement.remove();
         this.audioElement.remove();
@@ -285,14 +312,20 @@ class Client {
             // If packet_n is >= last packet received => send it to the processor
             // Otherwise drop it (to save time)
             if(data.packet_n >= this.packet_n){
+                // Save the time at which we receive data
+                performance.mark('data-received-'+data.packet_n);
+
                 // Recreate the Float32Array buffer
                 data.samples = new Float32Array(Object.values(data.samples));
 
                 // Process data
-                this.remoteProcessingNode.port.postMessage(data);
+                this.remoteProcessingNode.port.postMessage({
+                    type: 'packet',
+                    data: data
+                });
             }
             else {
-                console.log("Packet dropped");
+                //console.log("Packet dropped");
             }
         });
     }
@@ -331,9 +364,17 @@ class Client {
             else if(message.audioContextRunning !== undefined) {
                 console.log('Connecting');
                 if(message.audioContextRunning === true) {
-                    // Attach source and dest
-                    this.localProcessingNode.connect(audioContext.destination);
-                    this.remoteProcessingNode.connect(this.remoteAudioDestination);
+                    if(!USE_MEDIA_AUDIO) {
+                        // Attach source and dest
+                        this.localProcessingNode.connect(audioContext.destination);
+                        this.remoteProcessingNode.connect(audioContext.destination);
+                    }
+
+                    if(audioContext.state === "running") {
+                        // Processing started
+                        performance.mark('processing-started');
+                    }
+
                     this.otherAudioContextRunning = true;
                     console.log('Connected');
                 }
@@ -357,18 +398,30 @@ class Client {
     }
 
     sendAudioContextState() {
-      if(this.dataChannel.readyState === "open" && this.controlChannel.readyState == "open") {
-          let message = {
-             audioContextRunning: audioContext.state === "running"
-          }
-          this.controlChannel.send(JSON.stringify(message));
-          console.log(message);
-      }
+        if(this.dataChannel.readyState === "open" && this.controlChannel.readyState == "open") {
+            let message = {
+                audioContextRunning: audioContext.state === "running"
+            }
+            this.controlChannel.send(JSON.stringify(message));
+            console.log(message);
+
+            if(this.otherAudioContextRunning && message.audioContextRunning) {
+                // Processing started
+                performance.mark('processing-started');
+            }
+        }
     }
 
     addVideoTrack(track) {
         // Attach remote video
         this.remoteVideoStream.addTrack(track);
+    }
+
+    addAudioTrack(track) {
+        if(USE_MEDIA_AUDIO) {
+            // Attach remote audio
+            this.remoteAudioStream.addTrack(track);
+        }
     }
 
     createAndSendOffer() {

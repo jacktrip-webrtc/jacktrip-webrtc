@@ -1,5 +1,8 @@
 'use strict'
 
+const LIMIT_NUM = 100
+const LIMIT = false
+
 class DataSenderProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
@@ -22,6 +25,11 @@ class DataSenderProcessor extends AudioWorkletProcessor {
 
         // Update packet number
         this.packet_n++;
+
+        // For test purposes
+        if(LIMIT === true && this.packet_n === LIMIT_NUM) {
+            return false;
+        }
 
         // To keep this processor alive.
         return true;

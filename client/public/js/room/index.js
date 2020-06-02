@@ -12,7 +12,19 @@ document.documentElement.style.setProperty('--vh', `${vh}px`);
 // Media configuration
 const mediaConfiguration = {
     video: true,
-    audio: true
+    audio: {
+        autoGainControl: false,
+        channelCount: 1,
+        echoCancellation: false,
+        latency: {
+            min: 0.003,
+            max: 0.01
+        },
+        noiseSuppression: false,
+        sampleRate: 48000,
+        sampleSize: 16,
+        volume: 1.0
+    }
 };
 
 // Streams
@@ -83,9 +95,11 @@ audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
 
 // Once joined
 socket.on('joined', (clients) => {
-    // Check for audioContext
-    if(audioContext.state !== "running"){
-        $('#joinAudioModal').modal('show');
+    if(!USE_MEDIA_AUDIO) {
+        // Check for audioContext
+        if(audioContext.state !== "running"){
+            $('#joinAudioModal').modal('show');
+        }
     }
 
     // Create a peer connection for each client

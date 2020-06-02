@@ -3,6 +3,8 @@
 const BUFF_SIZE = 128;
 const WINDOW_SIZE = 32;
 const IN_BUFFER = 4;
+const LIMIT_NUM = 100
+const LIMIT = false
 
 class CircularBuffer {
     constructor() {
@@ -34,10 +36,10 @@ class CircularBuffer {
             for(let j = 0; j < this.buffer_size; j++, start++) {
                 this.queue[start] = samples[j];
             }
-            console.log("Packet stored");
+            //console.log("Packet stored");
         }
         else {
-            console.log("Packet dropped");
+            //console.log("Packet dropped");
         }
     }
 
@@ -79,15 +81,23 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
         this.begin = false; // Flag to decide whether to start or not the playback
 
         this.port.onmessage = (event) => {
-            let data = event.data;
+            let obj = event.data;
 
-            // Load data in the queue
-            this.queue.enqueue(data.packet_n, data.samples);
-            this.n++;
+            switch(obj.type) {
+                case 'packet':
+                    let data = obj.data
+                    // Load data in the queue
+                    this.queue.enqueue(data.packet_n, data.samples);
+                    this.n++;
 
-            // I received IN_BUFFER packets => start the playback
-            if(this.n >= IN_BUFFER) {
-                this.begin = true;
+                    // I received IN_BUFFER packets => start the playback
+                    if(this.n >= IN_BUFFER) {
+                        this.begin = true;
+                    }
+
+                    break;
+                default:
+                    // Nothing to do
             }
         };
 
@@ -125,6 +135,10 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
             });
         }
 
+        // For test purposes
+        if(LIMIT === true && this.packet_n === LIMIT_NUM) {
+            return false;
+        }
         // To keep this processor alive.
         return true;
     }
