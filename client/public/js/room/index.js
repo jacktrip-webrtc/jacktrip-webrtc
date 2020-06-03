@@ -17,8 +17,8 @@ const mediaConfiguration = {
         channelCount: 1,
         echoCancellation: false,
         latency: {
-            min: 0.003,
-            max: 0.01
+            min: 0.01,
+            max: 0.02
         },
         noiseSuppression: false,
         sampleRate: 48000,
