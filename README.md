@@ -41,7 +41,7 @@ Now you can connect to http://localhost:8000 or https://localhost:44300 and to h
 
 Once connected you just need to create a room, by clicking on the 'Create Room' button, then allow access to camera and microphone and click on the 'Join Audio' button to actually join the room with audio.
 
-Next you need to share the link with the other party.
+Next you need to share the current page web address link with the other party.
 
 The other party needs to navigate to the received URL, allow access to camera and microphone and join the room with audio, by clicking on the 'Join Audio' button.
 
