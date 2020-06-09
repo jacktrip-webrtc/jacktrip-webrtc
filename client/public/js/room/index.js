@@ -35,6 +35,9 @@ let socket = undefined;
 // Start socket connection
 socket = io.connect('/room', { transports: ['websocket'], rejectUnauthorized: false });
 
+// Module classes
+let Packet;
+
 function joinAudio() {
     audioContext.resume();
     $('#joinAudioModal').modal('hide');
@@ -86,6 +89,12 @@ audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
     return audioContext.audioWorklet.addModule('/js/room/data-receiver-processor.js');
 })
 .then(() => {
+    return import('./packet.js');
+})
+.then((mod) => {
+    // Save module class
+    Packet = mod.default;
+
     // Join the room
     socket.emit('join', room_id);
 })

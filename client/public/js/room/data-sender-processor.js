@@ -1,5 +1,7 @@
 'use strict'
 
+import Packet from './packet.js'
+
 const LIMIT_NUM = 100
 const LIMIT = false
 
@@ -17,11 +19,14 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         // Each input or output may have multiple channels. Get the first channel. (They are equal)
         const inputChannel0 = input[0];
 
-        // Send data to DataNode
-        this.port.postMessage({
+        // Create the ArrayBuffer
+        let buf = Packet.create({
             samples: inputChannel0,
             packet_n: this.packet_n
         });
+
+        // Send the buffer to DataNode (transferring the ownership)
+        this.port.postMessage(buf, [buf]);
 
         // Update packet number
         this.packet_n++;

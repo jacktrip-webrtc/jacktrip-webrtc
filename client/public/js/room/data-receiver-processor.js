@@ -1,5 +1,7 @@
 'use strict'
 
+import Packet from './packet.js'
+
 const BUFF_SIZE = 128;
 const WINDOW_SIZE = 32;
 const IN_BUFFER = 4;
@@ -85,7 +87,9 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
 
             switch(obj.type) {
                 case 'packet':
-                    let data = obj.data
+                    // Receive the array buffer
+                    let data = Packet.parse(obj.data);
+
                     // Load data in the queue
                     this.queue.enqueue(data.packet_n, data.samples);
                     this.n++;

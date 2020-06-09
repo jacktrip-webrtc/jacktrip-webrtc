@@ -211,8 +211,10 @@ class Client {
         this.localProcessingNode = new DataSenderNode(audioContext);
         this.localProcessingNode.port.onmessage = (event) => {
             if(this.dataChannel.readyState === 'open' && this.otherAudioContextRunning) {
-                // Stringify the object in order to send it
-                this.dataChannel.send(JSON.stringify(event.data));
+                let buf = event.data;
+
+                // Send the ArrayBuffer
+                this.dataChannel.send(buf);
 
                 // Save time of sent data
                 performance.mark('data-sent-'+event.data.packet_n);
@@ -306,23 +308,21 @@ class Client {
 
         // Append new messages to the box of incoming messages
         this.dataChannel.addEventListener('message', event => {
-            // Parse JSON
-            const data = JSON.parse(event.data);
+            // Get packet number
+            let packet_n = Packet.getPacketNumber(event.data);
+            let buf = event.data;
 
             // If packet_n is >= last packet received => send it to the processor
             // Otherwise drop it (to save time)
-            if(data.packet_n >= this.packet_n){
+            if(packet_n >= this.packet_n){
                 // Save the time at which we receive data
-                performance.mark('data-received-'+data.packet_n);
+                performance.mark('data-received-'+packet_n);
 
-                // Recreate the Float32Array buffer
-                data.samples = new Float32Array(Object.values(data.samples));
-
-                // Process data
+                // Process data (tranfer of ownership)
                 this.remoteProcessingNode.port.postMessage({
                     type: 'packet',
-                    data: data
-                });
+                    data: buf
+                }, [buf]);
             }
             else {
                 //console.log("Packet dropped");
