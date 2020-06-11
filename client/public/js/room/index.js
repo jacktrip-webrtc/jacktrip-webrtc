@@ -28,15 +28,15 @@ const mediaConfiguration = {
 };
 
 // Streams
-let localAudioStream = undefined;
-let localVideoStream = undefined;
+let localAudioStream = new MediaStream();// Create separated streams
+let localVideoStream = new MediaStream();
 let socket = undefined;
+
+// Track status
+let audioTrackPlay = true;
 
 // Start socket connection
 socket = io.connect('/room', { transports: ['websocket'], rejectUnauthorized: false });
-
-// Module classes
-let Packet;
 
 function joinAudio() {
     audioContext.resume();
@@ -44,10 +44,19 @@ function joinAudio() {
 }
 
 function toggleMuteAudio() {
-    let track = localAudioStream.getAudioTracks()[0];
-    if(track.enabled) {
+    if(audioTrackPlay) {
         // Mute it
-        track.enabled = false;
+        if(USE_MEDIA_AUDIO) {
+            // Mute it
+            let track = localAudioStream.getAudioTracks()[0];
+            track.enabled = false;
+            audioTrackPlay = false;
+        }
+        else {
+            // Mute it
+            audioTrackPlay = false;
+        }
+
         document.getElementById('audioIcon').classList = "fas fa-microphone-slash";
 
         let div = document.getElementById('local-mute-message');
@@ -56,7 +65,17 @@ function toggleMuteAudio() {
     }
     else {
         // Unmute it
-        track.enabled = true;
+        if(USE_MEDIA_AUDIO) {
+            // Unmute it
+            let track = localAudioStream.getAudioTracks()[0];
+            track.enabled = true;
+            audioTrackPlay = true;
+        }
+        else {
+            // Unmute it
+            audioTrackPlay = true;
+        }
+
         document.getElementById('audioIcon').classList = "fas fa-microphone";
 
         let div = document.getElementById('local-mute-message');
@@ -89,12 +108,6 @@ audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
     return audioContext.audioWorklet.addModule('/js/room/data-receiver-processor.js');
 })
 .then(() => {
-    return import('./packet.js');
-})
-.then((mod) => {
-    // Save module class
-    Packet = mod.default;
-
     // Join the room
     socket.emit('join', room_id);
 })
@@ -126,17 +139,20 @@ socket.on('joined', (clients) => {
             removePeer(id);
         }
 
-        localAudioStream.stop();
-        localVideoStream.stop();
+        localAudioStream.getAudioTracks().forEach((track, index) => {
+            localAudioStream.removeTrack(track);
+            track.stop();
+        });
+
+        localVideoStream.getVideoTracks().forEach((track, index) => {
+            localVideoStream.removeTrack(track);
+            track.stop();
+        });
     }
 
     // Handle media devices
     navigator.mediaDevices.getUserMedia(mediaConfiguration)
     .then(stream => {
-        // Create separated streams
-        localVideoStream = new MediaStream();
-        localAudioStream = new MediaStream();
-
         stream.getVideoTracks().forEach((track) => {
             localVideoStream.addTrack(track);
         });

@@ -1,3 +1,5 @@
+'use strict'
+
 function getStats(name='') {
     let obj = {}
     obj.timeOrigin = performance.timeOrigin;

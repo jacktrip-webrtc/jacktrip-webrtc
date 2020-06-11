@@ -173,8 +173,10 @@ class Client {
         // Save the localAudioStream
         this.localAudioStream = audioStream;
 
-        // Create audio source
-        this.localAudioSource = audioContext.createMediaStreamSource(audioStream);
+        if(!USE_MEDIA_AUDIO) {
+            // Create audio source
+            this.localAudioSource = audioContext.createMediaStreamSource(audioStream);
+        }
 
         // Listen for local ICE candidates on the local RTCPeerConnection
         this.peerConnection.onicecandidate = event => {
@@ -207,39 +209,42 @@ class Client {
             }
         });
 
-        // Node for sending data
-        this.localProcessingNode = new DataSenderNode(audioContext);
-        this.localProcessingNode.port.onmessage = (event) => {
-            if(this.dataChannel.readyState === 'open' && this.otherAudioContextRunning) {
-                let buf = event.data;
+        if(!USE_MEDIA_AUDIO) {
+            // Node for sending data
+            this.localProcessingNode = new DataSenderNode(audioContext);
+            this.localProcessingNode.port.onmessage = (event) => {
+                if(this.otherAudioContextRunning && this.dataChannel.readyState === 'open') {
+                    let buf = event.data;
 
-                // Send the ArrayBuffer
-                this.dataChannel.send(buf);
+                    // Send the ArrayBuffer
+                    this.dataChannel.send(buf);
 
-                // Save time of sent data
-                performance.mark('data-sent-'+event.data.packet_n);
-            }
-            else {
-                console.log('Not running')
-            }
-        };
+                    // Save time of sent data
+                    performance.mark('data-sent-'+event.data.packet_n);
+                }
+                else {
+                    console.log('Not running')
+                }
+            };
 
-        // Node for receiving data
-        this.remoteProcessingNode = new DataReceiverNode(audioContext);
-        this.remoteProcessingNode.port.onmessage = (event) => {
-            // Update localPacket number for filtering (below)
-            this.packet_n = event.data.packet_n;
-        };
+            // Node for receiving data
+            this.remoteProcessingNode = new DataReceiverNode(audioContext);
+            this.remoteProcessingNode.port.onmessage = (event) => {
+                // Update localPacket number for filtering (below)
+                this.packet_n = event.data.packet_n;
+            };
+        }
 
-        this.localAudioSource.connect(this.localProcessingNode);
         if(this.offering) {
             // Create controlChannel (TCP)
             this.controlChannel = this.peerConnection.createDataChannel('control');
             this.setUpControlChannel();
 
-            // Create dataChannel (UDP - no retransmit)
-            this.dataChannel = this.peerConnection.createDataChannel('audio', {maxRetransmits: 0, ordered: false});
-            this.setUpDataChannel();
+            if(!USE_MEDIA_AUDIO) {
+                // Create dataChannel (UDP - no retransmit)
+                this.dataChannel = this.peerConnection.createDataChannel('audio', {maxRetransmits: 0, ordered: false});
+                this.setUpDataChannel();
+            }
         }
         else {
             // Listen for datachannel creation
@@ -262,11 +267,28 @@ class Client {
     }
 
     remove() {
-        // Close dataChannel
-        this.dataChannel.close();
+        if(!USE_MEDIA_AUDIO) {
+            // Close dataChannel
+            this.dataChannel.close();
+        }
 
         // Close controlChannel
         this.controlChannel.close();
+
+        if(!USE_MEDIA_AUDIO) {
+            // Stop all audio processing
+            this.localAudioSource.disconnect();
+            this.localProcessingNode.disconnect();
+            this.remoteProcessingNode.disconnect();
+
+            this.localProcessingNode.port.postMessage({
+                type: 'destroy'
+            });
+
+            this.remoteProcessingNode.port.postMessage({
+                type: 'destroy'
+            })
+        }
 
         // Remove video stream
         this.peerConnection.removeTrack(this.sender);
@@ -295,12 +317,16 @@ class Client {
     setUpDataChannel() {
         // Listener for when the datachannel is opened
         this.dataChannel.addEventListener('open', event => {
+            // Force the binary type to be ArrayBuffer
+            this.dataChannel.binaryType = "arraybuffer";
+
             this.sendAudioContextState();
             console.log('Data channel opened');
         });
 
         // Listener for when the datachannel is closed
         this.dataChannel.addEventListener('close', event => {
+            this.localAudioSource.disconnect();
             this.localProcessingNode.disconnect();
             this.remoteProcessingNode.disconnect();
             console.log('Data channel closed');
@@ -308,9 +334,11 @@ class Client {
 
         // Append new messages to the box of incoming messages
         this.dataChannel.addEventListener('message', event => {
-            // Get packet number
-            let packet_n = Packet.getPacketNumber(event.data);
+            // Get the ArrayBuffer
             let buf = event.data;
+
+            // Get packet number
+            let packet_n = Packet.getPacketNumber(buf);
 
             // If packet_n is >= last packet received => send it to the processor
             // Otherwise drop it (to save time)
@@ -366,6 +394,7 @@ class Client {
                 if(message.audioContextRunning === true) {
                     if(!USE_MEDIA_AUDIO) {
                         // Attach source and dest
+                        this.localAudioSource.connect(this.localProcessingNode);
                         this.localProcessingNode.connect(audioContext.destination);
                         this.remoteProcessingNode.connect(audioContext.destination);
                     }
@@ -379,9 +408,13 @@ class Client {
                     console.log('Connected');
                 }
                 else {
-                    // Detach source and dest
-                    this.localProcessingNode.disconnect();
-                    this.remoteProcessingNode.disconnect();
+                    if(!USE_MEDIA_AUDIO) {
+                        // Detach source and dest
+                        this.localAudioSource.disconnect();
+                        this.localProcessingNode.disconnect();
+                        this.remoteProcessingNode.disconnect();
+                    }
+
                     this.otherAudioContextRunning = false;
                     console.log('Disconnected');
                 }
@@ -391,23 +424,33 @@ class Client {
 
     sendTrackStatus() {
         let message = {
-           trackStatus: this.localAudioStream.getAudioTracks()[0].enabled
+           trackStatus: audioTrackPlay
         }
         this.controlChannel.send(JSON.stringify(message));
+
+        if(!USE_MEDIA_AUDIO) {
+            this.localProcessingNode.port.postMessage({
+                type: 'track-status',
+                muted: !audioTrackPlay
+            });
+        }
+
         console.log(message);
     }
 
     sendAudioContextState() {
-        if(this.dataChannel.readyState === "open" && this.controlChannel.readyState == "open") {
-            let message = {
-                audioContextRunning: audioContext.state === "running"
-            }
-            this.controlChannel.send(JSON.stringify(message));
-            console.log(message);
+        if(!USE_MEDIA_AUDIO) {
+            if(this.dataChannel.readyState === "open" && this.controlChannel.readyState == "open") {
+                let message = {
+                    audioContextRunning: audioContext.state === "running"
+                }
+                this.controlChannel.send(JSON.stringify(message));
+                console.log(message);
 
-            if(this.otherAudioContextRunning && message.audioContextRunning) {
-                // Processing started
-                performance.mark('processing-started');
+                if(this.otherAudioContextRunning && message.audioContextRunning) {
+                    // Processing started
+                    performance.mark('processing-started');
+                }
             }
         }
     }

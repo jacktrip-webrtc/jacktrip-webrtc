@@ -1,4 +1,6 @@
-export default class Packet {
+'use strict'
+
+class Packet {
 
     /**
      * Method to create an ArrayBuffer given a JS Object
