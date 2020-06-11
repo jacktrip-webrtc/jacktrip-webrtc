@@ -42,7 +42,7 @@ const environment = config.environment;
 const staticFolder = config.staticFolder;
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 500, // limit each IP to 250 requests per windowMs
+  max: 500, // limit each IP to 500 requests per windowMs
   message: utils.createHttpResponse(429)
 });
 
