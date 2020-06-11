@@ -103,3 +103,10 @@ dist
 # TernJS port file
 .tern-port
 .DS_Store
+
+# Ssl
+ssl/
+*.pem
+*.key
+*.crt
+*.cert

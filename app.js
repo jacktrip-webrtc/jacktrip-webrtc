@@ -47,10 +47,9 @@ const limiter = rateLimit({
 });
 
 /*** Options ***/
-const opt_http = true;
-const opt_https = true;
-const opt_static = true;
-const opt_reverse_proxy = false;
+const opt_http = config.useHttp;
+const opt_https = config.useHttps;
+const opt_static = config.useStatic;
 
 if(environment === 'development') {
   let pathOpenSSL;
@@ -63,8 +62,12 @@ if(environment === 'development') {
       // In windows
       pathOpenSSL = '/Program Files/OpenSSL-Win64/bin/openssl';
     }
+    else if(os.platform() === 'darwin') {
+        // In Unix
+        pathOpenSSL = '/usr/local/bin/openssl';
+    }
     else {
-      // In Linux/Unix
+      // In Linux
       pathOpenSSL = '/usr/bin/openssl';
     }
   }
@@ -116,8 +119,8 @@ if(opt_https) {
   }
   else {
     // Certificate
-    const privateKey = fs.readFileSync('ssl/key.pem', 'utf8');
-    const certificate = fs.readFileSync('ssl/cert.pem', 'utf8');
+    const privateKey = fs.readFileSync(config.sslKeyPath, 'utf8');
+    const certificate = fs.readFileSync(config.sslCertPath, 'utf8');
 
     // Set credentials for starting the https server
     const credentials = {
