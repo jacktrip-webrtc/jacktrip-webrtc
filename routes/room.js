@@ -142,6 +142,31 @@ function handleSocket(io) {
     // Keep track of the room for the disconnect
     let roomJoined;
 
+    socket.on('check-room', (room) => {
+      logger.info(`Socket ${socket.id} checked room ${room}`)
+      try{
+        // Check if room exists
+        if(rooms[room] != undefined){
+          // Room exists
+
+          // Let the user know the room exist
+          socket.emit('room-checked', true);
+        }
+        else {
+          // Room does not exist
+          throw new CommunicationException(`Room ${room} does not exist`);
+        }
+      } catch (e) {
+        logger.info(e.message);
+        socket.emit('room-checked', false, e.message);
+      }
+    });
+
+    // Loopback function
+    socket.on('loopback-client-server', (buf) => {
+        socket.emit('loopback-server-client', buf);
+    })
+
     // Join room
     socket.on('join', (room) => {
       logger.info(`Socket ${socket.id} tried to join room ${room}`)
