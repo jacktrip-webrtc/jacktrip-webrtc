@@ -7,9 +7,11 @@ const USE_MEDIA_AUDIO = false;
 
 // Peer configuration
 const configuration = {
-  iceServers: [{
-    urls: 'stun:stun.l.google.com:19302'
-  }]
+    iceServers: [
+        {
+            urls: 'stun:stun.l.google.com:19302' // STUN server
+        }
+    ]
 };
 
 // Peer offer options
@@ -20,13 +22,12 @@ const offerOptions = {
 
 // Audio context options
 const audioContextOptions = {
-    latencyHint: "interactive",
+    latencyHint: 'interactive',
     sampleRate: 48000
 }
 
 // Audio context
 let audioContext = new AudioContext(audioContextOptions);
-audioContext.suspend();
 
 audioContext.onstatechange = () => {
     for(let id in peers) {
@@ -109,11 +110,12 @@ class Client {
         this.localAudioSource = null;
         this.localProcessingNode = null;
         this.remoteProcessingNode = null;
-        //this.remoteAudioDestination = audioContext.createMediaStreamDestination();
+        this.remoteAudioDestination = audioContext.createMediaStreamDestination();
         this.dataChannel = null;
         this.controlChannel = null;
         this.packet_n = 0;
         this.otherAudioContextRunning = false;
+        this.name = ''; // Name of the other peer
 
         // Create DOM elements for peer stream
         let div = document.getElementById('stream-elements');
@@ -122,7 +124,7 @@ class Client {
 
         this.videoElement = document.createElement('video');
         this.videoElement.id = `remote-video-${id}`;
-        this.classList ="embed-responsive-item"
+        this.classList ='embed-responsive-item'
         this.videoElement.muted = true;
         this.videoElement.autoplay = true;
         // Attach stream
@@ -130,31 +132,74 @@ class Client {
 
         this.audioElement = document.createElement('audio');
         this.audioElement.id = `remote-audio-${id}`;
-        this.audioElement.autoplay = true;
-        // Attach stream
-        this.audioElement.srcObject = this.remoteAudioStream;
+        this.audioElement.srcObject = null;
 
+        let startAudioRemotePeer = () => {
+            if(USE_MEDIA_AUDIO) {
+                // Attach stream
+                this.audioElement.srcObject = this.remoteAudioStream;
+            }
+            else {
+                // Attach destination stream
+                this.audioElement.srcObject = this.remoteAudioDestination.stream;
+            }
+
+            this.audioElement.autoplay = true;
+        }
+
+        if(document.getElementById('audio-output-button').audioId !== undefined  && (typeof this.audioElement.setSinkId === 'function')) {
+            let sinkId = document.getElementById('audio-output-button').audioId;
+            this.audioElement.setSinkId(sinkId)
+            .then(() => {
+                startAudioRemotePeer();
+            })
+            .catch(e => console.log(e));
+        }
+        else {
+            startAudioRemotePeer();
+        }
+
+        // Create name badge
+        this.remoteName = document.createElement('div');
+        this.remoteName.id = `remote-name-${id}`;
+        this.remoteName.classList = 'embed-responsive-item w-100 h-100 invisible';
+
+        let innerDiv = document.createElement('div');
+        innerDiv.classList = 'position-absolute bottom-left px-2 py-1 d-flex flex-row rounded mb-1 ml-1 bg-custom text-small';
+
+        this.remoteNameDisplay = document.createElement('p');
+        this.remoteNameDisplay.id = `local-name-display-${id}`
+        this.remoteNameDisplay.classList = 'mb-0 text-white';
+        this.remoteNameDisplay.innerText = '';
+
+        innerDiv.appendChild(this.remoteNameDisplay);
+
+        this.remoteName.appendChild(innerDiv);
+
+        // Create mute badge
         this.muteMessage = document.createElement('div');
         this.muteMessage.id = `remote-mute-message-${id}`;
         this.muteMessage.classList = 'embed-responsive-item w-100 h-100 invisible';
 
-        let innerDiv = document.createElement('div');
-        innerDiv.classList = 'position-absolute bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small';
+        let innerDiv1 = document.createElement('div');
+        innerDiv1.classList = 'position-absolute bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small';
 
-        let innerI = document.createElement('i');
-        innerI.classList = 'fas fa-microphone-slash text-danger my-auto mr-1';
+        let innerI1 = document.createElement('i');
+        innerI1.classList = 'fas fa-microphone-slash text-danger my-auto mr-1';
 
-        let innerP = document.createElement('p');
-        innerP.classList = 'mb-0 text-white';
-        innerP.innerText = 'Muted';
+        let innerP1 = document.createElement('p');
+        innerP1.classList = 'mb-0 text-white';
+        innerP1.innerText = 'Muted';
 
-        innerDiv.appendChild(innerI);
-        innerDiv.appendChild(innerP);
+        innerDiv1.appendChild(innerI1);
+        innerDiv1.appendChild(innerP1);
 
-        this.muteMessage.appendChild(innerDiv);
+        this.muteMessage.appendChild(innerDiv1);
 
+        // Attach all the elements
         this.container.appendChild(this.videoElement);
         this.container.appendChild(this.audioElement);
+        this.container.appendChild(this.remoteName);
         this.container.appendChild(this.muteMessage);
 
         div.appendChild(this.container);
@@ -249,7 +294,7 @@ class Client {
         else {
             // Listen for datachannel creation
             this.peerConnection.addEventListener('datachannel', event => {
-                console.log("created "+event.channel.label);
+                console.log('created '+event.channel.label);
                 switch (event.channel.label) {
                   case 'audio':
                     this.dataChannel = event.channel;
@@ -318,7 +363,7 @@ class Client {
         // Listener for when the datachannel is opened
         this.dataChannel.addEventListener('open', event => {
             // Force the binary type to be ArrayBuffer
-            this.dataChannel.binaryType = "arraybuffer";
+            this.dataChannel.binaryType = 'arraybuffer';
 
             this.sendAudioContextState();
             console.log('Data channel opened');
@@ -353,7 +398,7 @@ class Client {
                 }, [buf]);
             }
             else {
-                //console.log("Packet dropped");
+                //console.log('Packet dropped');
             }
         });
     }
@@ -363,6 +408,7 @@ class Client {
         this.controlChannel.addEventListener('open', event => {
             this.sendTrackStatus();
             this.sendAudioContextState();
+            this.sendName();
             console.log('Control channel opened');
         });
 
@@ -395,11 +441,17 @@ class Client {
                     if(!USE_MEDIA_AUDIO) {
                         // Attach source and dest
                         this.localAudioSource.connect(this.localProcessingNode);
-                        this.localProcessingNode.connect(audioContext.destination);
-                        this.remoteProcessingNode.connect(audioContext.destination);
+                        if(document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
+                            this.localProcessingNode.connect(this.remoteAudioDestination);
+                            this.remoteProcessingNode.connect(this.remoteAudioDestination);
+                        }
+                        else {
+                            this.localProcessingNode.connect(audioContext.destination);
+                            this.remoteProcessingNode.connect(audioContext.destination);
+                        }
                     }
 
-                    if(audioContext.state === "running") {
+                    if(audioContext.state === 'running') {
                         // Processing started
                         performance.mark('processing-started');
                     }
@@ -419,30 +471,37 @@ class Client {
                     console.log('Disconnected');
                 }
             }
+            else if (message.name !== undefined) {
+                this.name = message.name;
+                this.remoteNameDisplay.innerText = this.name;
+                this.remoteName.classList.remove('invisible');
+            }
         });
     }
 
     sendTrackStatus() {
-        let message = {
-           trackStatus: audioTrackPlay
-        }
-        this.controlChannel.send(JSON.stringify(message));
+        if(this.controlChannel.readyState === 'open') {
+            let message = {
+               trackStatus: audioTrackPlay
+            }
+            this.controlChannel.send(JSON.stringify(message));
 
-        if(!USE_MEDIA_AUDIO) {
-            this.localProcessingNode.port.postMessage({
-                type: 'track-status',
-                muted: !audioTrackPlay
-            });
-        }
+            if(!USE_MEDIA_AUDIO) {
+                this.localProcessingNode.port.postMessage({
+                    type: 'track-status',
+                    muted: !audioTrackPlay
+                });
+            }
 
-        console.log(message);
+            console.log(message);
+        }
     }
 
     sendAudioContextState() {
         if(!USE_MEDIA_AUDIO) {
-            if(this.dataChannel.readyState === "open" && this.controlChannel.readyState == "open") {
+            if(this.dataChannel.readyState === 'open' && this.controlChannel.readyState === 'open') {
                 let message = {
-                    audioContextRunning: audioContext.state === "running"
+                    audioContextRunning: audioContext.state === 'running'
                 }
                 this.controlChannel.send(JSON.stringify(message));
                 console.log(message);
@@ -452,6 +511,15 @@ class Client {
                     performance.mark('processing-started');
                 }
             }
+        }
+    }
+
+    sendName() {
+        if(this.controlChannel.readyState == 'open') {
+            let message = {
+                name: name
+            }
+            this.controlChannel.send(JSON.stringify(message));
         }
     }
 

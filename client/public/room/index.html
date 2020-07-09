@@ -11,21 +11,37 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="/css/room/index.css">
 
-    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
     <script src="/js/room/util.js" charset="utf-8"></script>
     <script src="/js/room/packet.js" charset="utf-8"></script>
     <script src="/js/room/client.js" charset="utf-8"></script>
     <script src="/socket.io/socket.io.js" charset="utf-8"></script>
   </head>
   <body>
+    <div class="sticky-top">
+        <!-- Position it -->
+        <div id="messages" class="position-absolute pt-2 custom-message-conatiner">
+
+        </div>
+    </div>
+
     <div class="container-fluid my-vh-100">
-        <div class="d-flex flex-row flex-wrap w-100 py-2" id="stream-elements">
-            <div class="embed-responsive embed-responsive-4by3 w-100 col-lg-4 col-md-6 col-sm-12 py-0 px-0 bg-black rounded">
-                <video class="embed-responsive-item" id="local-video" autoplay muted></video>
-                <div id="local-mute-message" class="embed-responsive-item w-100 h-100 invisible">
-                    <div class="position-absolute bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small">
-                        <i class="fas fa-microphone-slash text-danger my-auto mr-1"></i>
-                        <p class="mb-0 text-white">Muted</p>
+        <div id="stream-elements-container" class="my-vh-100 w-100 d-none">
+            <div class="d-flex flex-row flex-wrap w-100 py-2" id="stream-elements">
+                <div class="embed-responsive embed-responsive-4by3 w-100 col-lg-4 col-md-6 col-sm-12 py-0 px-0 bg-black rounded">
+                    <video class="embed-responsive-item" id="local-video" autoplay muted></video>
+                    <div id="local-name" class="embed-responsive-item w-100 h-100">
+                        <div class="position-absolute bottom-left px-2 py-1 d-flex flex-row rounded mb-1 ml-1 bg-custom text-small">
+                            <p id="local-name-display" class="mb-0 text-white"></p>
+                        </div>
+                    </div>
+                    <div id="local-mute-message" class="embed-responsive-item w-100 h-100 invisible">
+                        <div class="position-absolute bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small">
+                            <i class="fas fa-microphone-slash text-danger my-auto mr-1"></i>
+                            <p class="mb-0 text-white">Muted</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -35,15 +51,158 @@
         <div class="modal fade" id="joinAudioModal" data-backdrop="static" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content mx-2">
-                    <div class="modal-body d-flex flex-column">
-                        <div class="d-flex flex-row justify-content-center mb-3">
-                            <i class="fa fa-info my-auto mr-2 text-blu"></i>
-                            <h4 class="h4 my-0">Info</h4>
+                    <div class="modal-body h-50 px-3 py-2">
+                        <div id="audio-options-carousel" class="carousel slide pt-2 d-inline-flex flex-column w-100" data-ride="carousel" data-interval="false">
+                            <div id="audio-options-carousel-content" class="carousel-inner h-100" role="listbox" style="overflow: visible;">
+                                <ol id="modal-indicators" class="carousel-indicators mb-0">
+                                        <li data-target="#audio-options-carousel" data-slide-to="0" class="active bg-blu"></li>
+                                        <li data-target="#audio-options-carousel" data-slide-to="1" class="bg-blu"></li>
+                                        <li data-target="#audio-options-carousel" data-slide-to="2" class="bg-blu"></li>
+                                        <li data-target="#audio-options-carousel" data-slide-to="3" class="bg-blu"></li>
+                                </ol>
+                                <div class="carousel-item active opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">Video settings</h4>
+                                    </div>
+                                    <div class="embed-responsive embed-responsive-4by3 w-100 py-0 px-0 bg-black mx-auto my-3 rounded">
+                                        <video class="embed-responsive-item" id="modal-video" autoplay muted></video>
+                                    </div>
+                                    <div class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Webcam <i class="fas fa-video"></i></p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="video-input-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select webcam <i class="fas fa-sort-dow"></i>
+                                          </button>
+                                          <div id="video-input" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" onclick="toggleJoinWithVideoMuted()">
+                                            <label class="form-check-label" for="defaultCheck1">
+                                                Join without camera
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="" id="defaultCheck2" onclick="toggleFlipVideo()">
+                                            <label class="form-check-label" for="defaultCheck2">
+                                                Flip video
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="carousel-item opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">Audio settings</h4>
+                                    </div>
+                                    <div class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Microphone <i class="fas fa-microphone"></i></p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="audio-input-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select microphone
+                                          </button>
+                                          <div id="audio-input" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex mb-3">
+                                        <div class="col-5 col-sm-4">
+                                            <!-- Spacing -->
+                                        </div>
+                                        <div class="col-7 col-sm-8 px-0 d-flex flex-row">
+                                            <div class="col-7 px-0">
+                                                <meter id="modal-meter" class="w-100 ph-meter" value="-29" min="-29" max="6" optimum="-10" low="-6" high="-1"></meter>
+                                            </div>
+                                            <div class="col-5 text-center">
+                                                <p class="my-0">
+                                                    <span id="modal-meter-level">—</span> dB
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="audio-out-div" class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Speaker <i class="fas fa-volume-up"></i></p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="audio-output-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select speaker <i class="fas fa-sort-dow"></i>
+                                          </button>
+                                          <div id="audio-output" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <audio id="modal-audio"></audio>
+                                    <div class="d-flex">
+                                        <div class="col-5 col-sm-4">
+                                            <!-- Spacing -->
+                                        </div>
+                                        <div class="col-7 col-sm-8 px-0">
+                                            <button id="test-speaker" class="btn btn-blu mb-3" type="button" name="button" onclick="testSpeaker()">Test speaker</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="" id="defaultCheck3" onclick="toggleJoinWithAudioMuted()">
+                                            <label class="form-check-label" for="defaultCheck3">
+                                                Join with microphone muted
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="carousel-item opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">Audio loopback</h4>
+                                    </div>
+                                    <div class="col-12 d-flex flex-column text-center mb-3">
+                                        <p class="my-0">
+                                            You will here yourself after a full loop through the the netwrok passing through the server.
+                                        </p>
+                                    </div>
+                                    <div class="d-flex mb-3">
+                                        <button id="modal-test-loopback" class="btn btn-blu my-auto mx-auto" type="button" name="button" onclick="testLoopback()">Test loopback</button>
+                                    </div>
+                                    <div class="d-none mb-3">
+                                        <button id="modal-stop-loopback" class="btn btn-blu my-auto mx-auto" type="button" name="button" onclick="stopLoopback()">Stop loopback</button>
+                                    </div>
+                                    <div class="col-12 d-flex flex-column text-center mb-3">
+                                        <p class="my-0 text-danger ft-14">
+                                            <strong>Warning:</strong> depending on the audio settings it may cause feedback.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="carousel-item opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">You are almost done</h4>
+                                    </div>
+                                    <div class="col-12 d-flex flex-column text-center mb-3">
+                                        <p class="my-0">
+                                            Select name to show
+                                        </p>
+                                    </div>
+                                    <div class="col-12 d-flex mb-3 px-0">
+                                        <div class="form-group w-100">
+                                            <input type="text" class="form-control w-100 text-body" maxlength="25" id="name" placeholder="Jon Doe" name="" value="" aria-describedby="name" onkeyup="checkName(this)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-row">
+                                <div id="carousel-prev" class="carousel-control-prev flex-row justify-content-start d-none">
+                                    <button class="btn btn-blu my-auto" type="button" name="button" onclick="previous()">Previous</button>
+                                </div>
+                                <div id="carousel-next" class="carousel-control-next flex-row justify-content-end">
+                                    <button class="btn btn-blu my-auto" type="button" name="button" onclick="next()">Next</button>
+                                </div>
+                                <div id="carousel-join" class="carousel-control-next flex-row justify-content-end d-none">
+                                    <button id='carousel-join-button' class="btn btn-blu my-auto" type="button" name="button" onclick="joinAudio()" disabled>Join</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex flex-row justify-content-center mb-4">
-                            <p class="text-center leading my-0">Join with device's audio</p>
-                        </div>
-                        <button class="btn btn-blu mx-auto" type="button" name="Create room" onclick="joinAudio()">Join</button>
                     </div>
                 </div>
             </div>
