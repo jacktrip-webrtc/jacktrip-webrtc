@@ -48,3 +48,6 @@ These are the environment variables that can be defined in the .env file
 * **STATIC**: the path of the folder which contains static files. The path is relative with respect to the project folder (_default: **client/public**_)
 * **PATH_OPENSSL**: the path of the folder to the openssl executable (default: depends on the actual OS)
 * **TIMEOUT_SEC**: the amount of seconds after which an inactive room is deleted (_default: **1800**_)
+* **TURN_SERVER_URL**: the url of the TURN server that needs to be used
+* **TURN_SERVER_USERNAME**: the username in order to access the turn server
+* **TURN_SERVER_PASSWORD**: the password in order to access the turn server

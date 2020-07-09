@@ -80,6 +80,11 @@ if(USE_MEDIA_AUDIO) {
     }
 }
 
+// Utility function
+function isEmpty(obj) {
+    return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
 // Modal controls
 function next() {
     // Go to next page of the modal
@@ -801,8 +806,21 @@ function toggleMuteVideo() {
     }
 }
 
-// Register sender node before entering the room, so the DataSenderProcessor is available in each other step
-audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
+fetch('/room/turn')
+.then((response) => {
+    // Examine the JSON in the response
+    return response.json();
+})
+.then((turn) => {
+    if(!isEmpty(turn)) {
+        // Add the TURN server in the array
+        configuration.iceServers.push(turn);
+    }
+})
+.then(() => {
+    // Register sender node before entering the room, so the DataSenderProcessor is available in each other step
+    audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
+})
 .then(() => {
     // Register receiver node before entering the room, so the DataReceiverProcessor is available in each other step
     return audioContext.audioWorklet.addModule('/js/room/data-receiver-processor.js');

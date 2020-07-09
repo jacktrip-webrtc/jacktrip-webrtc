@@ -125,6 +125,25 @@ router
     .send(utils.createHttpResponse(200,{ url: room.url }));
 });
 
+// TURN server
+router
+.route('/turn')
+.get((req, res, next) => {
+  let turn = {}
+  if(config.turnServerURL !== '' && config.turnServerUsername !== '' && config.turnServerPassword !== '') {
+    // There is the TURN server configuration => add it to the turn object
+    turn = {
+      urls: config.turnServerURL,
+      username: config.turnServerUsername,
+      credential: config.turnServerPassword
+    }
+  }
+
+  res
+    .status(200)
+    .send(turn);
+});
+
 // Route '/:id'
 router
 .route('/:id')
@@ -164,7 +183,7 @@ function handleSocket(io) {
 
     // Loopback function
     socket.on('loopback-client-server', (buf) => {
-        socket.emit('loopback-server-client', buf);
+      socket.emit('loopback-server-client', buf);
     })
 
     // Join room
