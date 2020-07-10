@@ -351,9 +351,19 @@ function updateMediaStream() {
 }
 
 function toggleFlipVideo() {
-    // Flip video
-    $('#modal-video').toggleClass('mirror');
-    $('#local-video').toggleClass('mirror');
+    let checkbox = document.getElementById('flip-video');
+    if(checkbox.checked) {
+        // Flip video
+        $('#modal-video').addClass('mirror');
+        $('#local-video').addClass('mirror');
+    }
+    else {
+        // Flip video
+        $('#modal-video').removeClass('mirror');
+        $('#local-video').removeClass('mirror');
+    }
+
+    localStorage['flip-video'] = checkbox.checked;
 }
 
 function toggleJoinWithVideoMuted() {
@@ -371,6 +381,8 @@ function toggleJoinWithVideoMuted() {
         // Set the icon to not hidden
         document.getElementById('videoIcon').classList = 'fas fa-video';
     }
+
+    localStorage['join-video-muted'] = !videoTrackPlay;
 }
 
 function toggleJoinWithAudioMuted() {
@@ -416,6 +428,8 @@ function toggleJoinWithAudioMuted() {
         div.classList.remove('visible');
         div.classList.add('invisible');
     }
+
+    localStorage['join-mic-muted'] = !audioTrackPlay;
 }
 
 function testSpeaker() {
@@ -848,6 +862,22 @@ socket.on('room-checked', (exists, error) => {
 
             document.getElementById('modal-video').srcObject = localVideoStream;
             document.getElementById('modal-video').autoplay = true;
+
+            // Load checkbox values from localStorage - default value = false
+            if(localStorage['flip-video'] === 'true') {
+                document.getElementById('flip-video').checked = true;
+                toggleFlipVideo();
+            }
+
+            if(localStorage['join-video-muted'] === 'true') {
+                document.getElementById('join-video-muted').checked = true;
+                toggleJoinWithVideoMuted();
+            }
+
+            if(localStorage['join-mic-muted'] === 'true') {
+                document.getElementById('join-mic-muted').checked = true;
+                toggleJoinWithAudioMuted();
+            }
 
             // Event listener for device changes
             navigator.mediaDevices.ondevicechange = function(event) {
