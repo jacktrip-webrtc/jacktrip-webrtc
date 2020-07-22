@@ -201,3 +201,17 @@ meter::-webkit-meter-even-less-good-value {
 .tooltip {
     top: 0;
 }
+
+.z-index-1000 {
+    z-index: 1000;
+}
+
+.badge-light {
+    color: #fff;
+    background-color: #6d6ae6;
+}
+
+.badge-loopback {
+    bottom: 42px;
+    left: 62px;
+}

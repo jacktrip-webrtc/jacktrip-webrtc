@@ -52,6 +52,8 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         this.packet_n = 0; // Packet counter
         this.muted = false;
         this.terminate = false; // To signal its destruction
+        this.loopback = false; // To signal if it is in loopback state
+        this.audioLoopback = false; // This is needed in order to not mute the source when the peer is set in the audio Loopback
 
         this.port.onmessage = (event) => {
             let obj = event.data;
@@ -63,6 +65,11 @@ class DataSenderProcessor extends AudioWorkletProcessor {
                 case 'destroy':
                     this.terminate = true;
                     break;
+                case 'loopback':
+                    this.loopback = obj.loopback;
+                    break;
+                case 'audioLoopback':
+                    this.audioLoopback = obj.audioLoopback;
             }
         }
     }
@@ -75,7 +82,16 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         // Each input or output may have multiple channels. Get the first channel. (They are equal)
         const inputChannel0 = input[0];
 
-        if(inputChannel0 !== undefined && !this.muted && !inputChannel0.every((value) => value === 0)) {
+        // The processor may have multiple outputs. Get the first output.
+        const output = outputs[0][0];
+
+        if(inputChannel0 !== undefined && (!this.muted || this.audioLoopback) && !inputChannel0.every((value) => value === 0) && !this.loopback) {
+            // Send a message to the main thread for performance measures
+            this.port.postMessage({
+                type: 'performance',
+                packet_n: this.packet_n
+            });
+
             // Create the ArrayBuffer
             let buf = Packet.create({
                 samples: inputChannel0,
@@ -83,7 +99,21 @@ class DataSenderProcessor extends AudioWorkletProcessor {
             });
 
             // Send the buffer to DataNode (transferring the ownership)
-            this.port.postMessage(buf, [buf]);
+            this.port.postMessage({
+                type: 'packet',
+                buf: buf
+            }, [buf]);
+        }
+        else if(this.looppback) {
+            this.port.postMessage({
+                type: 'loopback',
+                packet_n: this.packet_n
+            });
+        }
+
+        // Set silence (just for safety reasons)
+        for(let i = 0; i<output.length; i++) {
+            output[i] = 0;
         }
 
         if(inputChannel0 !== undefined) {

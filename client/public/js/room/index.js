@@ -50,6 +50,9 @@ let packet_n = 0;
 // Name selected by user
 let name = '';
 
+// Loopback counter
+let loopbackCounter = 0;
+
 // Start socket connection
 socket = io.connect('/room', { transports: ['websocket'], rejectUnauthorized: false });
 
@@ -58,7 +61,7 @@ $('input[type=checkbox]').prop('checked',false);
 
 // Enable tooltips
 $(function () {
-    $('[data-toggle="tooltip"]').tooltip({
+    $("[data-toggle='tooltip']").tooltip({
        container: 'body'
     });
 });
@@ -78,6 +81,11 @@ if(USE_MEDIA_AUDIO) {
     for(let i = 2; i < indicators.children.length; i++) {
         indicators.children[i].setAttribute('data-slide-to', i);
     }
+
+    // Hide settings
+    let settingsToolbar = document.getElementById('settingsToolbar');
+    settingsToolbar.classList.remove('d-flex');
+    settingsToolbar.classList.add('d-none');
 }
 
 // Utility function
@@ -502,17 +510,25 @@ function createAudioWorklets() {
         // Node for sending data
         senderAudioWorklet = new DataSenderNode(audioContext);
         senderAudioWorklet.port.onmessage = (event) => {
-            let buf = event.data;
+            switch (event.data.type) {
+                case 'packet':
+                    let buf = event.data.buf;
 
-            // Send the ArrayBuffer
-            socket.emit('loopback-client-server', buf);
+                    // Send the ArrayBuffer
+                    socket.emit('loopback-client-server', buf);
+                    break;
+            }
         };
 
         // Node for receiving data
         receiverAudioWorklet = new DataReceiverNode(audioContext);
         receiverAudioWorklet.port.onmessage = (event) => {
-            // Update localPacket number for filtering (below)
-            packet_n = event.data.packet_n;
+            switch (event.data.type) {
+                case 'packet_n-request':
+                    // Update localPacket number for filtering (below)
+                    packet_n = event.data.packet_n;
+                    break;
+            }
         };
 
         // Reset packet_n
@@ -737,11 +753,11 @@ function createShareLinkToast() {
     div2.setAttribute('data-title','Copy link');
 
     div2.onmouseover = () => {
-        $(div2).tooltip('show'); // Show tooltip when overing over the "button"
+        $(div2).tooltip('show'); // Show tooltip when overing over the 'button'
     }
 
     div2.onmouseout = () => {
-        $(div2).tooltip('hide'); // Hide tooltip when not overing anymore over the "button"
+        $(div2).tooltip('hide'); // Hide tooltip when not overing anymore over the 'button'
     }
 
     let i = document.createElement('i');
@@ -820,6 +836,102 @@ function toggleMuteVideo() {
     }
 }
 
+function showSettingsModal() {
+    // Open settings modal
+    $('#settingsModal').modal('show');
+}
+
+function createLoopbackEntry(id, name, startCallback, stopCallback) {
+    let entryDiv = document.getElementById('loopbackEntries');
+
+    if(entryDiv.children.length == 0) {
+        // Hide message
+        document.getElementById('loopbackMessage').classList.add('d-none');
+
+        // Show div
+        entryDiv.classList.remove('d-none');
+        entryDiv.classList.add('d-flex');
+    }
+
+    let div = document.createElement('div');
+    div.classList='d-flex flex-row w-100 mb-3';
+    div.id = `entry-${id}`;
+
+    let div1 = document.createElement('div');
+    div1.classList='d-flex w-75 justify-content-start';
+
+    let p = document.createElement('p');
+    p.classList = 'my-auto';
+    p.innerText = name;
+
+    div1.appendChild(p);
+
+    let div2 = document.createElement('div');
+    div2.classList='d-flex w-25 justify-content-end'
+
+    let btn1 = document.createElement('button');
+    btn1.classList='btn btn-blu';
+    btn1.innerText = 'Loopback';
+    btn1.onclick = () => {
+        // Hide btn1 and show btn2
+        div2.classList.remove('d-flex');
+        div2.classList.add('d-none');
+
+        startCallback();
+
+        div3.classList.remove('d-none');
+        div3.classList.add('d-flex');
+
+        loopbackCounter++;
+        document.getElementById('loopbackCounter').innerText = loopbackCounter;
+    }
+
+    div2.appendChild(btn1);
+
+    let div3 = document.createElement('div');
+    div3.classList='d-none w-25 justify-content-end';
+
+    let btn2 = document.createElement('button');
+    btn2.classList = 'btn btn-blu';
+    btn2.innerText = 'Stop';
+    btn2.onclick = () => {
+        // Hide btn2 and show btn1
+        div3.classList.remove('d-flex');
+        div3.classList.add('d-none');
+
+        stopCallback();
+
+        div2.classList.remove('d-none');
+        div2.classList.add('d-flex');
+
+        loopbackCounter--;
+        document.getElementById('loopbackCounter').innerText = loopbackCounter === 0 ? '' : loopbackCounter;
+    }
+
+    div3.appendChild(btn2);
+
+    div.appendChild(div1);
+    div.appendChild(div2);
+    div.appendChild(div3);
+
+    entryDiv.appendChild(div);
+}
+
+function removeLoopbackEntry(id) {
+    document.getElementById(`entry-${id}`).remove();
+
+    let entryDiv = document.getElementById('loopbackEntries');
+
+    if(entryDiv.children.length == 0) {
+        // Show message
+        document.getElementById('loopbackMessage').classList.remove('d-none');
+
+        // Hide div
+        entryDiv.classList.add('d-none');
+        entryDiv.classList.remove('d-flex');
+    }
+}
+
 fetch('/room/turn')
 .then((response) => {
     // Examine the JSON in the response
@@ -833,7 +945,7 @@ fetch('/room/turn')
 })
 .then(() => {
     // Register sender node before entering the room, so the DataSenderProcessor is available in each other step
-    audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
+    return audioContext.audioWorklet.addModule('/js/room/data-sender-processor.js')
 })
 .then(() => {
     // Register receiver node before entering the room, so the DataReceiverProcessor is available in each other step

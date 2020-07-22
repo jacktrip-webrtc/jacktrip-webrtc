@@ -5,6 +5,11 @@
 // false -> Use DataChannel and AudioWorklets
 const USE_MEDIA_AUDIO = false;
 
+// Loopback method
+// true -> Use loopback at an audio level
+// false -> Use loopback at the dataChannel level
+const USE_AUDIO_LOOPBACK = true;
+
 // Peer configuration
 const configuration = {
     iceServers: [
@@ -116,6 +121,11 @@ class Client {
         this.packet_n = 0;
         this.otherAudioContextRunning = false;
         this.name = ''; // Name of the other peer
+        this.createdPacket_n = -1; // Keep track of the number of the created packet for loopback reasons
+        this.loopback = false; // loopback at DataChannel level
+        this.audioLoopback = false; // Loopback at Audio level
+        this.remoteAudioLoopbackDestination = audioContext.createMediaStreamDestination();
+        this.remoteAudioLoopbackDestinationToSource = audioContext.createMediaStreamSource(this.remoteAudioLoopbackDestination.stream); // This will be used as source of the audio worklet in case of loopback
 
         // Create DOM elements for peer stream
         let div = document.getElementById('stream-elements');
@@ -123,7 +133,7 @@ class Client {
         this.container.classList = 'embed-responsive embed-responsive-4by3 w-100 col-lg-4 col-md-6 col-sm-12 py-0 px-0 bg-black rounded'
 
         this.videoElement = document.createElement('video');
-        this.videoElement.id = `remote-video-${id}`;
+        this.videoElement.id = `remote-video-${this.id}`;
         this.classList ='embed-responsive-item'
         this.videoElement.muted = true;
         this.videoElement.autoplay = true;
@@ -131,7 +141,7 @@ class Client {
         this.videoElement.srcObject = this.remoteVideoStream;
 
         this.audioElement = document.createElement('audio');
-        this.audioElement.id = `remote-audio-${id}`;
+        this.audioElement.id = `remote-audio-${this.id}`;
         this.audioElement.srcObject = null;
 
         let startAudioRemotePeer = () => {
@@ -161,14 +171,14 @@ class Client {
 
         // Create name badge
         this.remoteName = document.createElement('div');
-        this.remoteName.id = `remote-name-${id}`;
+        this.remoteName.id = `remote-name-${this.id}`;
         this.remoteName.classList = 'embed-responsive-item w-100 h-100 invisible';
 
         let innerDiv = document.createElement('div');
         innerDiv.classList = 'position-absolute bottom-left px-2 py-1 d-flex flex-row rounded mb-1 ml-1 bg-custom text-small';
 
         this.remoteNameDisplay = document.createElement('p');
-        this.remoteNameDisplay.id = `local-name-display-${id}`
+        this.remoteNameDisplay.id = `local-name-display-${this.id}`
         this.remoteNameDisplay.classList = 'mb-0 text-white';
         this.remoteNameDisplay.innerText = '';
 
@@ -178,7 +188,7 @@ class Client {
 
         // Create mute badge
         this.muteMessage = document.createElement('div');
-        this.muteMessage.id = `remote-mute-message-${id}`;
+        this.muteMessage.id = `remote-mute-message-${this.id}`;
         this.muteMessage.classList = 'embed-responsive-item w-100 h-100 invisible';
 
         let innerDiv1 = document.createElement('div');
@@ -196,11 +206,32 @@ class Client {
 
         this.muteMessage.appendChild(innerDiv1);
 
+        // Create loopback badge
+        this.loopbackMessage = document.createElement('div');
+        this.loopbackMessage.id = `remote-loopback-message-${this.id}`;
+        this.loopbackMessage.classList = 'embed-responsive-item w-100 h-100 invisible';
+
+        let innerDiv2 = document.createElement('div');
+        innerDiv2.classList = 'position-absolute z-index-1000 bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small';
+
+        let innerI2 = document.createElement('i');
+        innerI2.classList = 'fas fa-undo text-blu my-auto mr-1';
+
+        let innerP2 = document.createElement('p');
+        innerP2.classList = 'mb-0 text-white';
+        innerP2.innerText = 'Loopback';
+
+        innerDiv2.appendChild(innerI2);
+        innerDiv2.appendChild(innerP2);
+
+        this.loopbackMessage.appendChild(innerDiv2);
+
         // Attach all the elements
         this.container.appendChild(this.videoElement);
         this.container.appendChild(this.audioElement);
         this.container.appendChild(this.remoteName);
         this.container.appendChild(this.muteMessage);
+        this.container.appendChild(this.loopbackMessage);
 
         div.appendChild(this.container);
     }
@@ -259,13 +290,32 @@ class Client {
             this.localProcessingNode = new DataSenderNode(audioContext);
             this.localProcessingNode.port.onmessage = (event) => {
                 if(this.otherAudioContextRunning && this.dataChannel.readyState === 'open') {
-                    let buf = event.data;
+                    switch (event.data.type) {
+                        case 'performance':
+                            // Keep track of when the packet has been created (when the process method of the AudioWorklet has been called)
+                            performance.mark(`data-created-${socket.id}-${this.id}-${event.data.packet_n}`);
+                            this.createdPacket_n = event.data.packet_n;
+                            break;
+                        case 'packet':
+                            // Take the generated packet and send it to the other peer
+                            let buf = event.data.buf;
+                            let packet_n = Packet.getPacketNumber(buf);
 
-                    // Send the ArrayBuffer
-                    this.dataChannel.send(buf);
+                            if(this.dataChannel.readyState === 'open') {
+                                // Send the ArrayBuffer
+                                this.dataChannel.send(buf);
+                            }
 
-                    // Save time of sent data
-                    performance.mark('data-sent-'+event.data.packet_n);
+                            // Update the created pakcet num (for loopback reasons)
+                            this.createdPacket_n++;
+
+                            // Save time of sent data
+                            performance.mark(`data-sent-${socket.id}-${this.id}-${packet_n}`);
+                            break;
+                        case 'loopback':
+                            this.createdPacket_n = event.data.packet_n;
+                            break;
+                    }
                 }
                 else {
                     console.log('Not running')
@@ -275,8 +325,16 @@ class Client {
             // Node for receiving data
             this.remoteProcessingNode = new DataReceiverNode(audioContext);
             this.remoteProcessingNode.port.onmessage = (event) => {
-                // Update localPacket number for filtering (below)
-                this.packet_n = event.data.packet_n;
+                switch (event.data.type) {
+                    case 'packet_n-request':
+                        // Update localPacket number for filtering (below)
+                        this.packet_n = event.data.packet_n;
+                        break;
+                    case 'performance':
+                        // Save time of sent data
+                        performance.mark(`data-played-${this.id}-${socket.id}-${event.data.packet_n}`);
+                        break;
+                }
             };
         }
 
@@ -325,6 +383,7 @@ class Client {
             this.localAudioSource.disconnect();
             this.localProcessingNode.disconnect();
             this.remoteProcessingNode.disconnect();
+            this.remoteAudioLoopbackDestinationToSource.disconnect();
 
             this.localProcessingNode.port.postMessage({
                 type: 'destroy'
@@ -357,6 +416,20 @@ class Client {
         this.videoElement.remove();
         this.audioElement.remove();
         this.container.remove();
+        if(!USE_MEDIA_AUDIO) {
+            removeLoopbackEntry(this.id);
+        }
+
+        // Create toast notification
+        let div = document.createElement('div');
+        div.classList = 'd-flex flex-wrap w-100 col-12 px-2 py-2';
+
+        let p = document.createElement('p');
+        p.classList = 'py-0';
+        p.innerHTML = '<strong>'+this.name+'</strong> left the room';
+
+        div.appendChild(p);
+        createToast('Participant left', div, 1500);
     }
 
     setUpDataChannel() {
@@ -379,26 +452,37 @@ class Client {
 
         // Append new messages to the box of incoming messages
         this.dataChannel.addEventListener('message', event => {
-            // Get the ArrayBuffer
-            let buf = event.data;
+            if(!this.loopback) {
+                // Get the ArrayBuffer
+                let buf = event.data;
 
-            // Get packet number
-            let packet_n = Packet.getPacketNumber(buf);
+                // Get packet number
+                let packet_n = Packet.getPacketNumber(buf);
 
-            // If packet_n is >= last packet received => send it to the processor
-            // Otherwise drop it (to save time)
-            if(packet_n >= this.packet_n){
-                // Save the time at which we receive data
-                performance.mark('data-received-'+packet_n);
+                // If packet_n is >= last packet received => send it to the processor
+                // Otherwise drop it (to save time)
+                if(packet_n >= this.packet_n){
+                    // Save the time at which we receive data
+                    performance.mark(`data-received-${this.id}-${socket.id}-${packet_n}`);
 
-                // Process data (tranfer of ownership)
-                this.remoteProcessingNode.port.postMessage({
-                    type: 'packet',
-                    data: buf
-                }, [buf]);
+                    // Process data (tranfer of ownership)
+                    this.remoteProcessingNode.port.postMessage({
+                        type: 'packet',
+                        data: buf
+                    }, [buf]);
+                }
+                else {
+                    // console.log('Packet dropped');
+                }
             }
             else {
-                //console.log('Packet dropped');
+                // Replace the packet_n
+                let buf = event.data;
+                Packet.replacePacketNum(buf, this.createdPacket_n);
+                this.createdPacket_n++;
+
+                // Send the packet back
+                this.dataChannel.send(event.data);
             }
         });
     }
@@ -475,6 +559,36 @@ class Client {
                 this.name = message.name;
                 this.remoteNameDisplay.innerText = this.name;
                 this.remoteName.classList.remove('invisible');
+
+                if(!this.offering) {
+                    // Create toast notification if this peer is the one that received the offer
+                    let div = document.createElement('div');
+                    div.classList = 'd-flex flex-wrap w-100 col-12 px-2 py-2';
+
+                    let p = document.createElement('p');
+                    p.classList = 'py-0';
+                    p.innerHTML = '<strong>'+this.name+'</strong> joined the room';
+
+                    div.appendChild(p);
+                    createToast('New participant', div, 2000);
+                }
+
+                if(!USE_MEDIA_AUDIO) {
+                    createLoopbackEntry(this.id, this.name, () => { this.setLoopback(); }, () => { this.removeLoopback(); });
+                }
+            }
+            else if (message.loopback !== undefined) {
+                // Set widget visible or not
+                if(message.loopback === true) {
+                    // Loopback
+                    this.loopbackMessage.classList.remove('invisible');
+                    this.loopbackMessage.classList.add('visible');
+                }
+                else if(message.loopback === false) {
+                    // Not loopback
+                    this.loopbackMessage.classList.remove('visible');
+                    this.loopbackMessage.classList.add('invisible');
+                }
             }
         });
     }
@@ -499,7 +613,7 @@ class Client {
 
     sendAudioContextState() {
         if(!USE_MEDIA_AUDIO) {
-            if(this.dataChannel.readyState === 'open' && this.controlChannel.readyState === 'open') {
+            if(this.dataChannel !== null && this.dataChannel.readyState === 'open' && this.controlChannel.readyState === 'open') {
                 let message = {
                     audioContextRunning: audioContext.state === 'running'
                 }
@@ -532,6 +646,105 @@ class Client {
         if(USE_MEDIA_AUDIO) {
             // Attach remote audio
             this.remoteAudioStream.addTrack(track);
+        }
+    }
+
+    setLoopback() {
+        if(!USE_MEDIA_AUDIO) {
+            if(!USE_AUDIO_LOOPBACK) {
+                // DataChannel version
+                this.loopback = true;
+                this.localProcessingNode.port.postMessage({
+                    type: 'loopback',
+                    loopback: this.loopback
+                })
+            }
+            else {
+                // AudioLoopback version
+                this.audioLoopback = true;
+
+                // Disconnect all nodes
+                this.localAudioSource.disconnect();
+                this.localProcessingNode.disconnect();
+                this.remoteProcessingNode.disconnect();
+
+                // Connect them differently
+                // Connection:
+                // The source stream is the remoteAudioLoopbackDestinationToSource, a MediaSourceStream obtained by the MediaStreamDestionation remoteAudioLoopbackDestination
+                // We connect this source to the DataSenderNode, and we connect both DataSender and DataReceiver to the remoteAudioLoopbackDestination
+                // This way we are able to achieve a loopback in which the data received by the DataReceiver node is then delivered to the DataSender
+                this.remoteAudioLoopbackDestinationToSource.connect(this.localProcessingNode);
+                this.localProcessingNode.connect(audioContext.destination);
+                this.remoteProcessingNode.connect(this.remoteAudioLoopbackDestination);
+
+                // We tell the audio worklet that we are in a loopback situation (to avoid muting audio)
+                this.localProcessingNode.port.postMessage({
+                    type: 'audioLoopback',
+                    audioLoopback: this.audioLoopback
+                })
+            }
+
+            // The following code is valid in both versions
+            let message = {
+                loopback: this.loopback || this.audioLoopback
+            }
+            this.controlChannel.send(JSON.stringify(message));
+        }
+    }
+
+    removeLoopback() {
+        if(!USE_MEDIA_AUDIO) {
+            if(!USE_AUDIO_LOOPBACK) {
+                // DataChannel version
+                this.loopback = false;
+                this.localProcessingNode.port.postMessage({
+                    type: 'loopback',
+                    loopback: this.loopback
+                })
+            }
+            else {
+                // Audio loopback version
+                this.audioLoopback = false;
+
+                // Disconnect all nodes
+                this.remoteAudioLoopbackDestinationToSource.disconnect();
+                this.localProcessingNode.disconnect();
+                this.remoteProcessingNode.disconnect();
+
+                // Connect them in the previous configuration
+                // Create audio source
+                this.localAudioSource = audioContext.createMediaStreamSource(this.localAudioStream);
+                this.localAudioSource.connect(this.localProcessingNode);
+                if(document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
+                    this.localProcessingNode.connect(this.remoteAudioDestination);
+                    this.remoteProcessingNode.connect(this.remoteAudioDestination);
+                }
+                else {
+                    this.localProcessingNode.connect(audioContext.destination);
+                    this.remoteProcessingNode.connect(audioContext.destination);
+                }
+
+                if(USE_MEDIA_AUDIO) {
+                    // Attach stream
+                    this.audioElement.srcObject = this.remoteAudioStream;
+                }
+                else {
+                    // Attach destination stream
+                    this.audioElement.srcObject = this.remoteAudioDestination.stream;
+                }
+
+                // We tell the audio worklet that we are no more in a loopback situation
+                this.localProcessingNode.port.postMessage({
+                    type: 'audioLoopback',
+                    audioLoopback: this.audioLoopback
+                })
+            }
+
+            // The following code is valid in both versions
+            let message = {
+                loopback: this.loopback || this.audioLoopback
+            }
+            this.controlChannel.send(JSON.stringify(message));
         }
     }
 
@@ -578,5 +791,18 @@ class Client {
         .catch((e) => {
           console.error('Error adding received ice candidate', e);
         });
+    }
+
+    getStats() {
+        this.peerConnection.getStats(null)
+        .then(stats => {
+            [...stats]
+            .map(report => report[1])
+            .filter(report => report.type === 'data-channel')
+            .forEach(report => {
+                console.log(report);
+            });
+        })
+        .catch((e) => console.error(e));
     }
 }

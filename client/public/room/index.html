@@ -225,6 +225,30 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="settingsModal" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row mb-3">
+                            <h4 class="h4 my-0 mx-auto">Loopback settings</h4>
+                            <button type="button" class="close btn-no-outline" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div id="loopbackEntries" class="d-none flex-column">
+
+                        </div>
+
+                        <div id="loopbackMessage" class="mb-3">
+                            <p class="my-0 text-center">No user connected</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="btn-toolbar w-100 d-flex justify-content-center button-controls fixed-bottom" role="toolbar" aria-label="Toolbar with button groups">
@@ -232,8 +256,15 @@
             <button id="audioButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteAudio()"><i id="audioIcon" class="fas fa-microphone"></i></button>
         </div>
         <div class="btn-group ml-2" role="group" aria-label="Mute group">
-            <button id="videoutton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteVideo()"><i id="videoIcon" class="fas fa-video"></i></button>
+            <button id="videBoutton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteVideo()"><i id="videoIcon" class="fas fa-video"></i></button>
         </div>
+    </div>
+
+    <div id="settingsToolbar" class="btn-toolbar w-25 d-flex justify-content-start button-controls fixed-bottom" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group ml-3" role="group" aria-label="Mute group">
+            <button id="settingsButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="showSettingsModal()"><i class="fas fa-cogs"></i></button>
+        </div>
+        <span id="loopbackCounter" class="badge badge-light position-absolute badge-loopback"></span>
     </div>
 
     <script src="/js/room/index.js" charset="utf-8"></script>

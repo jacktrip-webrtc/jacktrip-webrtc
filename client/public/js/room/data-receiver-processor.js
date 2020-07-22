@@ -158,6 +158,7 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
 
         // Send packetNumber to DataNode
         this.port.postMessage({
+            type: 'packet_n-request',
             packet_n: this.packet_n
         });
 
@@ -180,14 +181,33 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
                     output[i] = buff[i];
                 }
             }
+            else {
+                // Set silence
+                for(let i = 0; i<BUFF_SIZE; i++) {
+                    output[i] = 0;
+                }
+            }
 
             // Update packet number to request
             this.packet_n++;
 
             // Send packetNumber to DataNode
             this.port.postMessage({
+                type: 'packet_n-request',
                 packet_n: this.packet_n
             });
+
+            // Send packetNumber to DataNode
+            this.port.postMessage({
+                type: 'performance',
+                packet_n: this.packet_n-1
+            });
+        }
+        else {
+            // Set silence
+            for(let i = 0; i<BUFF_SIZE; i++) {
+                output[i] = 0;
+            }
         }
 
         // For test purposes
