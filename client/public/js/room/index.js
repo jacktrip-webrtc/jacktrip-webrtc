@@ -140,12 +140,15 @@ $('#audio-options-carousel').on('slide.bs.carousel', function(e) {
 
 // Handle click on lists
 $('.dropdown-menu').click(function(event){
-    // Update selected item
-    document.getElementById(this.id+'-button').innerText = event.target.innerText;
-    document.getElementById(this.id+'-button').audioId = event.target.audioId;
+    // Check if the selected device is different from the previous one
+    if(document.getElementById(this.id+'-button').audioId !== event.target.audioId) {
+        // Update selected item
+        document.getElementById(this.id+'-button').innerText = event.target.innerText;
+        document.getElementById(this.id+'-button').audioId = event.target.audioId;
 
-    // Update media stream
-    updateMediaStream();
+        // Update media stream
+        updateMediaStream();
+    }
 });
 
 function updateDeviceList() {
@@ -253,26 +256,27 @@ function updateMediaStream() {
     conf.audio.deviceId = {
         exact: audioId
     }
+
     conf.video = {
         deviceId: {
             exact: videoId
         }
     }
 
+    // Stop previous streams
+    localAudioStream.getAudioTracks().forEach((track) => {
+        localAudioStream.removeTrack(track);
+        track.stop();
+    });
+
+    localVideoStream.getVideoTracks().forEach((track) => {
+        localVideoStream.removeTrack(track);
+        track.stop();
+    });
+
     // Handle media devices
     navigator.mediaDevices.getUserMedia(conf)
     .then((stream) => {
-        // Recreate streams
-        localAudioStream.getAudioTracks().forEach((track) => {
-            localAudioStream.removeTrack(track);
-            track.stop();
-        });
-
-        localVideoStream.getVideoTracks().forEach((track) => {
-            localVideoStream.removeTrack(track);
-            track.stop();
-        });
-
         // Add new tracks
         stream.getAudioTracks().forEach((track) => {
             localAudioStream.addTrack(track);
