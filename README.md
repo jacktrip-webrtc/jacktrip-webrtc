@@ -31,7 +31,7 @@ or
 node app.js
 ```
 
-This will start a server on http://localhost:8000 and on https://localhost:44300. To modify those values, and also other parameters, you can simply create a .env file containing all required settings.   More details about that can be found in [Configuration.md](documentation/Configuration.md)
+This will start a server on http://localhost:8000 and on https://localhost:44300. To modify these values, and other parameters, you can simply create a .env file containing all required settings. More details can be found in [Configuration.md](documentation/Configuration.md)
 
 
 

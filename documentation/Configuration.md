@@ -21,7 +21,14 @@ To start the server use the following command:
 npm start
 ```
 
-This will start a server on http://localhost:8000 and on https://localhost:44300. To modify that values you can simply create a .env file containing all required settings
+This will start a server on http://localhost:8000 and on https://localhost:44300. To modify these values you can simply create a .env file containing all required settings. For example:
+
+```
+# Setting HTTP Port
+PORT=4464
+# Defining path to openSSL
+PATH_OPENSSL=/usr/local/opt/openssl
+```
 
 
 

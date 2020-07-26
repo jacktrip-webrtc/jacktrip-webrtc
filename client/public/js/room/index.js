@@ -773,7 +773,7 @@ function createShareLinkToast() {
     div.appendChild(div1);
     div.appendChild(div2);
 
-    createToast('Room link', div, 5000, 'link-toast');
+    createToast('Room link', div, 10000, 'link-toast');
 }
 
 function toggleMuteAudio() {
