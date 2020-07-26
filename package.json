@@ -27,6 +27,7 @@
     "pem": "^1.14.4",
     "socket.io": "^2.3.0",
     "url-join": "^4.0.1",
+    "which": "^2.0.2",
     "winston": "^3.2.1"
   },
   "devDependencies": {
