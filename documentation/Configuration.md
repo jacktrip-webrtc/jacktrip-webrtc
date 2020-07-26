@@ -30,7 +30,9 @@ PORT=4464
 PATH_OPENSSL=/usr/local/opt/openssl
 ```
 
+
 To see a richer example of the .env file take a look at the [.env.example](../.env.example) file in the root folder of the project
+
 
 
 
