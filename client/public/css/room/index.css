@@ -15,6 +15,11 @@ body {
     right: 0;
 }
 
+.bottom-left {
+    bottom: 0;
+    left: 0;
+}
+
 .rounded-top-left {
     border-top-left-radius: 0.25rem !important;
 }
@@ -96,4 +101,117 @@ body {
 
 .bg-custom {
     background: #2e2e33;
+}
+
+.bg-blu {
+    background-color: #6d6ae6 !important;
+}
+
+.carousel-indicators {
+    position: inherit;
+}
+
+.carousel-indicators li {
+    width: 10px;
+    height: 10px;
+    border-radius: 100%;
+}
+
+.carousel-control-prev, .carousel-control-next {
+    position: inherit;
+    width: 100%;
+    opacity: 1;
+}
+
+.dropdown-menu {
+    width:100% !important;
+    max-width:100% !important;
+}
+
+.dropdown-item {
+    white-space: pre-wrap;
+}
+
+.dropdown-toggle {
+    white-space: normal;
+}
+
+.pl-3-per {
+    padding-left: 4%;
+}
+
+.ft-14 {
+    font-size: 13px;
+}
+
+meter::-webkit-meter-optimum-value {
+    background: linear-gradient(to bottom, #62c462, #51a351);
+}
+meter::-webkit-meter-suboptimum-value {
+    background: linear-gradient(to bottom, #fbb450, #f89406);
+}
+meter::-webkit-meter-even-less-good-value {
+    background: linear-gradient(to bottom, #ee5f5b, #bd362f);
+}
+
+.custom-toast {
+    z-index: 1051;
+    width: 305px;
+    word-wrap: break-word;
+}
+
+.custom-message-conatiner {
+    z-index: 1050;
+    right: 0;
+    padding-right: 15px;
+    padding-left: 15px;
+}
+
+@media (max-width: 576px) {
+    .custom-toast {
+        width: 100%;
+        word-wrap: break-word;
+        overflow: wrap;
+    }
+
+    .custom-message-conatiner {
+        width: 100%;
+    }
+}
+
+.copy-btn {
+    cursor: pointer;
+}
+
+.py-12px {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.btn-no-outline:focus {
+    outline: none;
+}
+
+.form-control:focus {
+    border-color: #6d6ae6;
+    box-shadow: 0 0 0 0.2rem rgba(109, 106, 230, 0.25)
+}
+
+/* Solve a issue with PopperJS */
+.tooltip {
+    top: 0;
+}
+
+.z-index-1000 {
+    z-index: 1000;
+}
+
+.badge-light {
+    color: #fff;
+    background-color: #6d6ae6;
+}
+
+.badge-loopback {
+    bottom: 42px;
+    left: 62px;
 }

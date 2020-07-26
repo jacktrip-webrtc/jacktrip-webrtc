@@ -39,11 +39,13 @@ This will start a server on http://localhost:8000 and on https://localhost:44300
 
 Now you can connect to http://localhost:8000 or https://localhost:44300 and to https://\<host-ip-address\>:44300 if connecting from another device.
 
-Once connected you just need to create a room, by clicking on the 'Create Room' button, then allow access to camera and microphone and click on the 'Join Audio' button to actually join the room with audio.
+Once connected you just need to create a room, by clicking on the 'Create Room' button, then allow access to camera and microphone. Once the application has access to camera and microphone, you can select which camera, microphone  and speakers to use (the last one is available only on browsers based on Chromium). Then you can perform a loopback test if needed and then insert a name.
 
-Next you need to share the current page web address link with the other party.
+After you inserted a name you can join the room by clicking on the 'Join' button. 
 
-The other party needs to navigate to the received URL, allow access to camera and microphone and join the room with audio, by clicking on the 'Join Audio' button.
+Next you need to share the current page web address link with the other party. You can either copy it from the web browser address bar or by clicking on the button inside the notification that will appear on the top left of the screen once you join the room.
+
+The other party needs to navigate to the received URL, perform the same steps in order to select microphone, camera, speakers and a name. Then he can join the room by clicking on the 'Join' button.
 
 
 

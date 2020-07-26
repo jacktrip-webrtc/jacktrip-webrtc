@@ -1,4 +1,6 @@
-export default class Packet {
+'use strict'
+
+class Packet {
 
     /**
      * Method to create an ArrayBuffer given a JS Object
@@ -95,6 +97,32 @@ export default class Packet {
         let dw = new DataView(buf);
 
         // Return the packet number
-        return Number(dw.getBigUint64(0))
+        return Number(dw.getBigUint64(0));
+    }
+
+    /**
+     * Method to replace the packet number given the ArrayBuffer and the packet number
+     *
+     * @static
+     *
+     * @param {ArrayBuffer} buf
+     *    The ArrayBuffer on which we need to replace the packer number
+     * @param {Number} n
+     *    The new packet number
+     *
+     * @returns {ArrayBuffer}
+     *    Returns the buffer with the new packet number
+    **/
+    static replacePacketNum(buf, n) {
+        let dw = new DataView(buf);
+
+        //  Convert the packet numbet to a BigInt (max value = 2^53-1)
+        let packet_n = BigInt(n);
+
+        // Set the packet number
+        dw.setBigUint64(0, packet_n);
+
+        // Return the buffer
+        return buf;
     }
 }

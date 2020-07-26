@@ -1,9 +1,11 @@
-function getStats(name='') {
+'use strict'
+
+function getStats() {
     let obj = {}
     obj.timeOrigin = performance.timeOrigin;
     obj.data = performance.getEntriesByType('mark').map((el) => {
         let newEl = {};
-        newEl.name = name === '' ? el.name : `${el.name}-${name}`;
+        newEl.name = el.name;
         newEl.startTime = el.startTime;
         newEl.entryType = el.entryType;
         newEl.duration = el.duration;
@@ -13,15 +15,15 @@ function getStats(name='') {
     return JSON.stringify(obj);
 }
 
-function getLimitedStats(name='', start=0, end=100) {
+function getLimitedStats(start=0, end=100) {
     let obj = {}
     obj.timeOrigin = performance.timeOrigin;
     obj.data = performance.getEntriesByType('mark')
     .filter((el) => {
-        let packet_n = el.name.split("-")[2];
-        if(packet_n !== undefined) {
-            let n = parseInt(packet_n);
-            if(n<start || n>=end) {
+        let tmp = el.name.split("-");
+        let packet_n = parseInt(tmp[tmp.length-1]);
+        if(packet_n !== NaN) {
+            if(packet_n<start || packet_n>=end) {
                 return false;
             }
             else {
@@ -34,7 +36,7 @@ function getLimitedStats(name='', start=0, end=100) {
     })
     .map((el) => {
         let newEl = {};
-        newEl.name = name === '' ? el.name : `${el.name}-${name}`;
+        newEl.name = el.name;
         newEl.startTime = el.startTime;
         newEl.entryType = el.entryType;
         newEl.duration = el.duration;

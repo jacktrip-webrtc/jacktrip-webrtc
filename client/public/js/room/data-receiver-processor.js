@@ -1,12 +1,53 @@
 'use strict'
 
-import Packet from './packet.js'
-
 const BUFF_SIZE = 128;
 const WINDOW_SIZE = 32;
 const IN_BUFFER = 4;
 const LIMIT_NUM = 100
 const LIMIT = false
+
+/*** Copy of class Packet from packet.js due to limitations of import inside workers ***/
+class Packet {
+    /**
+     * Method to create a JS Object given an ArrayBuffer
+     *
+     * @static
+     *
+     * @param {ArrayBuffer} buf
+     *    The ArrayBuffer to "covert" into a JS Object
+     *
+     * @returns {Object}
+     *    Returns the generated object
+     *    The returned object has 2 properties:
+     *      - packet_n (Number): contains the packet number
+     *      - samples (Float32Array): contains the array of samples
+    **/
+    static parse(buf) {
+        // Create the object to be returned
+        let obj = {};
+        let dw = new DataView(buf);
+        // Set the offset in the ArrayBuffer
+        let offset = 0;
+
+        // Get the packet number
+        obj.packet_n = Number(dw.getBigUint64(offset))
+        offset+=BigInt64Array.BYTES_PER_ELEMENT;
+
+        // Evaluate size of the Float32Array buffer with the samples
+        let dim = (buf.byteLength - BigInt64Array.BYTES_PER_ELEMENT)/Float32Array.BYTES_PER_ELEMENT;
+
+        // Create the Float32Array buffer
+        obj.samples = new Float32Array(dim)
+
+        // Load the samples
+        for(let i = 0; i<dim; i++, offset+=Float32Array.BYTES_PER_ELEMENT) {
+            obj.samples[i] = dw.getFloat32(offset);
+        }
+
+        // Return the object
+        return obj;
+    }
+}
 
 class CircularBuffer {
     constructor() {
@@ -27,7 +68,8 @@ class CircularBuffer {
 
     enqueue(packet_n, samples) {
         // If i try to enqueue a previous packet or a packet which is too early i discard it
-        if((packet_n > this.requested_packet) && (packet_n < this.requested_packet+this.window_size)) {
+        // Handle the casi in which the first packet is not actually 0
+        if(this.requested_packet === -1 || (packet_n > this.requested_packet) && (packet_n < this.requested_packet+this.window_size)) {
             // Set the packet as present
             this.marker[packet_n%this.window_size] = true;
 
@@ -78,9 +120,10 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
         this.n = 0; // Counter to decide when to start
-        this.packet_n = 0; // Packet number
+        this.packet_n = -1; // Packet number
         this.queue = new CircularBuffer(); // CircularBuffer
         this.begin = false; // Flag to decide whether to start or not the playback
+        this.terminate = false; // To signal its destruction
 
         this.port.onmessage = (event) => {
             let obj = event.data;
@@ -94,11 +137,19 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
                     this.queue.enqueue(data.packet_n, data.samples);
                     this.n++;
 
+                    // Set first packet which may not be 0
+                    if(this.packet_n === -1) {
+                        this.packet_n = data.packet_n;
+                    }
+
                     // I received IN_BUFFER packets => start the playback
                     if(this.n >= IN_BUFFER) {
                         this.begin = true;
                     }
 
+                    break;
+                case 'destroy':
+                    this.terminate = true;
                     break;
                 default:
                     // Nothing to do
@@ -107,6 +158,7 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
 
         // Send packetNumber to DataNode
         this.port.postMessage({
+            type: 'packet_n-request',
             packet_n: this.packet_n
         });
 
@@ -129,18 +181,37 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
                     output[i] = buff[i];
                 }
             }
+            else {
+                // Set silence
+                for(let i = 0; i<BUFF_SIZE; i++) {
+                    output[i] = 0;
+                }
+            }
 
             // Update packet number to request
             this.packet_n++;
 
             // Send packetNumber to DataNode
             this.port.postMessage({
+                type: 'packet_n-request',
                 packet_n: this.packet_n
             });
+
+            // Send packetNumber to DataNode
+            this.port.postMessage({
+                type: 'performance',
+                packet_n: this.packet_n-1
+            });
+        }
+        else {
+            // Set silence
+            for(let i = 0; i<BUFF_SIZE; i++) {
+                output[i] = 0;
+            }
         }
 
         // For test purposes
-        if(LIMIT === true && this.packet_n === LIMIT_NUM) {
+        if(this.terminate || (LIMIT === true && this.packet_n === LIMIT_NUM)) {
             return false;
         }
         // To keep this processor alive.
