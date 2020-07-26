@@ -29,7 +29,7 @@ This will start a server on http://localhost:8000 and on https://localhost:44300
 
 These are the environment variables that can be defined in the .env file
 
-* **USE_HTTP**: to specify whether to start a HTTPserver or not. (_default: **true**_)
+* **USE_HTTP**: to specify whether to start a HTTP server or not. (_default: **true**_)
   * **false**: do **not** start the HTTP server
   * **true**: do start the HTTP server
 * **PORT**: the port on which the HTTP server will listen (_default: **8000**_)
