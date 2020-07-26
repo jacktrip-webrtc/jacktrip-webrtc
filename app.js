@@ -13,6 +13,7 @@ const httpStatusCodes = require('http-status-codes');
 const rateLimit = require("express-rate-limit");
 const pem = require('pem');
 const io = require('socket.io')();
+const which = require('which');
 
 /*** Custom modules ***/
 const logger = require('./lib/logger.js');
@@ -58,17 +59,22 @@ if(environment === 'development') {
     pathOpenSSL = config.pathOpenSSL;
   }
   else {
-    if(os.platform() === 'win32') {
-      // In windows
-      pathOpenSSL = '/Program Files/OpenSSL-Win64/bin/openssl';
-    }
-    else if(os.platform() === 'darwin') {
+    // Find OpenSSL in system PATH
+    pathOpenSSL = which.sync('openssl', {nothrow: true});
+    if(pathOpenSSL === null) {
+      // OpenSSL not found in system PATH, so try "default" paths
+      if(os.platform() === 'win32') {
+        // In windows
+        pathOpenSSL = '/Program Files/OpenSSL-Win64/bin/openssl';
+      }
+      else if(os.platform() === 'darwin') {
         // In Unix
         pathOpenSSL = '/usr/local/bin/openssl';
-    }
-    else {
-      // In Linux
-      pathOpenSSL = '/usr/bin/openssl';
+      }
+      else {
+        // In Linux
+        pathOpenSSL = '/usr/bin/openssl';
+      }
     }
   }
 
