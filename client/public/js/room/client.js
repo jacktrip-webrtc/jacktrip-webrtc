@@ -8,7 +8,7 @@ const USE_MEDIA_AUDIO = false;
 // Loopback method
 // true -> Use loopback at an audio level
 // false -> Use loopback at the dataChannel level
-const USE_AUDIO_LOOPBACK = true;
+let USE_AUDIO_LOOPBACK = true;
 
 // Peer configuration
 const configuration = {
@@ -150,14 +150,18 @@ class Client {
                 this.audioElement.srcObject = this.remoteAudioStream;
             }
             else {
-                // Attach destination stream
-                this.audioElement.srcObject = this.remoteAudioDestination.stream;
+                if(activateAudioSelection) {
+                    // Attach destination stream
+                    this.audioElement.srcObject = this.remoteAudioDestination.stream;
+                }
             }
 
-            this.audioElement.autoplay = true;
+            if(USE_MEDIA_AUDIO || activateAudioSelection) {
+                this.audioElement.autoplay = true;
+            }
         }
 
-        if(document.getElementById('audio-output-button').audioId !== undefined  && (typeof this.audioElement.setSinkId === 'function')) {
+        if(activateAudioSelection && document.getElementById('audio-output-button').audioId !== undefined  && (typeof this.audioElement.setSinkId === 'function')) {
             let sinkId = document.getElementById('audio-output-button').audioId;
             this.audioElement.setSinkId(sinkId)
             .then(() => {
@@ -308,12 +312,15 @@ class Client {
 
                             // Update the created pakcet num (for loopback reasons)
                             this.createdPacket_n++;
+                            console.log(this.createdPacket_n)
 
                             // Save time of sent data
                             performance.mark(`data-sent-${socket.id}-${this.id}-${packet_n}`);
                             break;
                         case 'loopback':
-                            this.createdPacket_n = event.data.packet_n;
+                            if(event.data.packet_n > this.createdPacket_n) {
+                                this.createdPacket_n = event.data.packet_n;
+                            }
                             break;
                     }
                 }
@@ -472,7 +479,7 @@ class Client {
                     }, [buf]);
                 }
                 else {
-                    // console.log('Packet dropped');
+                    //console.log(`Packet dropped ${packet_n} - ${this.packet_n}`);
                 }
             }
             else {
@@ -525,7 +532,7 @@ class Client {
                     if(!USE_MEDIA_AUDIO) {
                         // Attach source and dest
                         this.localAudioSource.connect(this.localProcessingNode);
-                        if(document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
+                        if(activateAudioSelection && document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
                             this.localProcessingNode.connect(this.remoteAudioDestination);
                             this.remoteProcessingNode.connect(this.remoteAudioDestination);
                         }
@@ -715,7 +722,7 @@ class Client {
                 // Create audio source
                 this.localAudioSource = audioContext.createMediaStreamSource(this.localAudioStream);
                 this.localAudioSource.connect(this.localProcessingNode);
-                if(document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
+                if(activateAudioSelection && document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
                     this.localProcessingNode.connect(this.remoteAudioDestination);
                     this.remoteProcessingNode.connect(this.remoteAudioDestination);
                 }

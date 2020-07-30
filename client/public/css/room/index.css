@@ -215,3 +215,24 @@ meter::-webkit-meter-even-less-good-value {
     bottom: 42px;
     left: 62px;
 }
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    color: #fff;
+    border-color: #6d6ae6;
+    background-color: #6d6ae6;
+}
+
+.custom-control-input:not(:disabled):active ~ .custom-control-label::before {
+    color: #fff;
+    background-color: #a2a1e6;
+    border-color: #a2a1e6;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    color: #fff;
+    border-color: #6d6ae6;
+    background-color: #6d6ae6;
+}
+.custom-control-input:focus ~ .custom-control-label::before {
+    box-shadow: 0 0 0 0.2rem rgba(162, 161, 230, 1) ;
+}

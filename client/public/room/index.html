@@ -125,7 +125,15 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div id="audio-out-div" class="d-flex flex-row mb-3">
+                                    <div id="audio-out-activate" class="d-flex flex-row mb-3">
+                                        <div class="col-12">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="customSwitch1" onclick="toggleActivateOutputSelection()">
+                                                <label class="custom-control-label" for="customSwitch1">Activate speaker selection</label><i class="fas fa-exclamation-triangle text-warning my-auto ml-2" data-toggle="tooltip" data-placement="bottom" data-title="Activating audio output selection may introduce latency" data-original-title="" title=""></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="audio-out-div" class="flex-row mb-3 collapse">
                                         <p class="my-auto col-5 col-sm-4">Speaker <i class="fas fa-volume-up"></i></p>
                                         <div class="dropdown col-7 col-sm-8 px-0">
                                           <button id="audio-output-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -236,6 +244,21 @@
                             <button type="button" class="close btn-no-outline" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
+                        </div>
+
+                        <div id="audio-loopback-info" class="d-none flex-column">
+                            <div id="audio-loopback-btn-goup" class="btn-group mx-auto mb-3" role="group" aria-label="Basic example">
+                                <button type="button" class="btn btn-blu" onClick="setAudioLoopbackType()">Audio</button>
+                                <button type="button" class="btn btn-blu" onclick="setDataChannelLoopbackType()">Netwrok</button>
+                            </div>
+                            <div class="mb-3 d-flex flex-row">
+                                <div class="col-9 d-flex justify-content-start px-0">
+                                    <span class="mr-auto">Current audio loopback type: </span>
+                                </div>
+                                <div class="col-3 d-flex justify-content-end px-0">
+                                    <strong class="" id="audio-loopback-type">Audio</strong>
+                                </div>
+                            </div>
                         </div>
 
                         <div id="loopbackEntries" class="d-none flex-column">

@@ -53,6 +53,9 @@ let name = '';
 // Loopback counter
 let loopbackCounter = 0;
 
+// Setting to decide whether or not to activate output selection
+let activateAudioSelection = false;
+
 // Start socket connection
 socket = io.connect('/room', { transports: ['websocket'], rejectUnauthorized: false });
 
@@ -86,6 +89,12 @@ if(USE_MEDIA_AUDIO) {
     let settingsToolbar = document.getElementById('settingsToolbar');
     settingsToolbar.classList.remove('d-flex');
     settingsToolbar.classList.add('d-none');
+}
+
+if(activateAudioSelection) {
+    let audioOutputDiv = document.getElementById('audio-out-div');
+    audioOutputDiv.classList.remove('collapse');
+    audioOutputDiv.classList.add('d-flex');
 }
 
 // Utility function
@@ -236,6 +245,8 @@ function updateDeviceList() {
             // No audio out found or it is not possible to select audio output -> hide list
             $('#audio-out-div').removeClass('d-flex');
             $('#audio-out-div').addClass('d-none');
+            $('#audio-out-activate').removeClass('d-flex');
+            $('#audio-out-activate').addClass('d-none');
         }
 
         // Update MediaStreams according to selected devices
@@ -280,6 +291,9 @@ function updateMediaStream() {
         // Add new tracks
         stream.getAudioTracks().forEach((track) => {
             localAudioStream.addTrack(track);
+            if(USE_MEDIA_AUDIO) {
+                track.enabled = audioTrackPlay;
+            }
         });
 
         stream.getVideoTracks().forEach((track) => {
@@ -463,18 +477,28 @@ function testSpeaker() {
     gain.gain.value = 0.25;
 
     let playAudio1sec = () => {
-        // Once the sinkId has been set, then set the sourceObject
-        audio.srcObject = mediaStreamDestination.stream;
-
         // Connect all nodes
-        gain.connect(mediaStreamDestination);
+        if(activateAudioSelection) {
+            // Once the sinkId has been set, then set the sourceObject
+            audio.srcObject = mediaStreamDestination.stream;
+            gain.connect(mediaStreamDestination);
+        }
+        else {
+            gain.connect(audioContext.destination);
+        }
+
         oscillator.start();
-        audio.play();
+
+        if(activateAudioSelection) {
+            audio.play();
+        }
 
         // Set a 1 second timeout
         let i = setTimeout(() => {
-            // Pause audio
-            audio.pause();
+            if(activateAudioSelection) {
+                // Pause audio
+                audio.pause();
+            }
 
             // Stop ocillator
             oscillator.stop();
@@ -492,7 +516,7 @@ function testSpeaker() {
     }
 
     // Set sink id if there is an id and the function is available
-    if(document.getElementById('audio-output-button').audioId !== undefined && (typeof audio.setSinkId === 'function')) {
+    if(activateAudioSelection && document.getElementById('audio-output-button').audioId !== undefined && (typeof audio.setSinkId === 'function')) {
         let sinkId = document.getElementById('audio-output-button').audioId;
         audio
         .setSinkId(sinkId)
@@ -507,6 +531,23 @@ function testSpeaker() {
 
     // Disable the button
     document.getElementById('test-speaker').disabled = true;
+}
+
+function toggleActivateOutputSelection() {
+    if(activateAudioSelection) {
+        // Disable it
+        activateAudioSelection = false;
+        let audioOutputDiv = document.getElementById('audio-out-div');
+        audioOutputDiv.classList.remove('d-flex');
+        audioOutputDiv.classList.add('collapse');
+    }
+    else {
+        // Eable it
+        activateAudioSelection = true;
+        let audioOutputDiv = document.getElementById('audio-out-div');
+        audioOutputDiv.classList.remove('collapse');
+        audioOutputDiv.classList.add('d-flex');
+    }
 }
 
 function createAudioWorklets() {
@@ -549,7 +590,7 @@ function createAudioWorklets() {
             // Start processing
             input.connect(senderAudioWorklet);
             senderAudioWorklet.connect(audioContext.destination);
-            if(sinkOk) {
+            if(activateAudioSelection && sinkOk) {
                 receiverAudioWorklet.connect(outputAudioWorklets);
             }
             else {
@@ -561,7 +602,7 @@ function createAudioWorklets() {
         }
 
         // Set sink id if there is an id and the function is available
-        if(document.getElementById('audio-output-button').audioId !== undefined && (typeof audio.setSinkId === 'function')) {
+        if(activateAudioSelection && document.getElementById('audio-output-button').audioId !== undefined && (typeof audio.setSinkId === 'function')) {
             let sinkId = document.getElementById('audio-output-button').audioId;
             audio
             .setSinkId(sinkId)
@@ -888,6 +929,13 @@ function createLoopbackEntry(id, name, startCallback, stopCallback) {
 
         loopbackCounter++;
         document.getElementById('loopbackCounter').innerText = loopbackCounter;
+
+        if(loopbackCounter === 1) {
+            // Disable loopback type selection
+            for(let i of document.getElementById('audio-loopback-btn-goup').children) {
+                i.disabled = true;
+            }
+        }
     }
 
     div2.appendChild(btn1);
@@ -910,6 +958,13 @@ function createLoopbackEntry(id, name, startCallback, stopCallback) {
 
         loopbackCounter--;
         document.getElementById('loopbackCounter').innerText = loopbackCounter === 0 ? '' : loopbackCounter;
+
+        if(loopbackCounter === 0) {
+            // Enable loopback type selection
+            for(let i of document.getElementById('audio-loopback-btn-goup').children) {
+                i.disabled = false;
+            }
+        }
     }
 
     div3.appendChild(btn2);
@@ -919,6 +974,11 @@ function createLoopbackEntry(id, name, startCallback, stopCallback) {
     div.appendChild(div3);
 
     entryDiv.appendChild(div);
+
+    // Show loopback settings
+    let loopbackSettings = document.getElementById('audio-loopback-info')
+    loopbackSettings.classList.remove('d-none');
+    loopbackSettings.classList.add('d-flex');
 }
 
 function removeLoopbackEntry(id) {
@@ -933,7 +993,22 @@ function removeLoopbackEntry(id) {
         // Hide div
         entryDiv.classList.add('d-none');
         entryDiv.classList.remove('d-flex');
+
+        // Hide loopback settings
+        let loopbackSettings = document.getElementById('audio-loopback-info')
+        loopbackSettings.classList.remove('d-flex');
+        loopbackSettings.classList.add('d-none');
     }
+}
+
+function setAudioLoopbackType() {
+    USE_AUDIO_LOOPBACK = true;
+    document.getElementById('audio-loopback-type').innerText = "Audio";
+}
+
+function setDataChannelLoopbackType() {
+    USE_AUDIO_LOOPBACK = false;
+    document.getElementById('audio-loopback-type').innerText = "Network";
 }
 
 fetch('/room/turn')

@@ -104,7 +104,7 @@ class DataSenderProcessor extends AudioWorkletProcessor {
                 buf: buf
             }, [buf]);
         }
-        else if(this.looppback) {
+        else if(this.loopback) {
             this.port.postMessage({
                 type: 'loopback',
                 packet_n: this.packet_n
