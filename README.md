@@ -8,6 +8,8 @@ Multi-machine network music performance over the Internet is achieved using high
 
 ## Setup
 
+### NodeJS
+
 After cloning the repository use the following commands to install all dependencies:
 
 ```bash
@@ -35,11 +37,53 @@ This will start a server on http://localhost:8000 and on https://localhost:44300
 
 
 
+### Docker
+
+Alternatively you can start this app using dokcer.
+
+After cloning the repository use the following command to create the docker image:
+
+```bash
+docker build -t jacktrip-webrtc/jacktrip-webrtc .
+```
+
+
+
+The image you obtained is configured to run the app in a production environment, so it starts only the https version of the app and it requires a ssl certificate in order to run this server. You can generate a self signed certificate through the following commands:
+
+```bash
+mkdir ssl
+openssl req -new -x509 -days 365 -nodes -out ssl/ssl.cert -keyout ssl/ssl.key
+chmod 600 ssl.*
+```
+
+It creates the ssl folder containing both the certificate and the key.
+
+
+
+Then you can create and run the container using the following command:
+
+```bash
+docker run --name jacktrip-webrtc -p 44300:44300 -v "$(pwd)"/ssl:/usr/src/app/ssl -v "$(pwd)"/logs:/usr/src/app/logs -d jacktrip-webrtc/jacktrip-webrtc
+```
+
+This command will create a container using the image we created previously, will mount to it the ssl folder containing the certificate files we created before, will mount to it the logs folder, where application logs will be stored and will map the container port to the port 44300 of the machine executing the container.
+
+
+
+Take a look at the [documentation](https://docs.docker.com/engine/reference/run/#env-environment-variables) of `docker run` to know how to define and customize environment variable. More details on the available environment variables can be found in [Configuration.md](documentation/Configuration.md)
+
+
+
 ## Usage
 
-Now you can connect to http://localhost:8000 or https://localhost:44300 and to https://\<host-ip-address\>:44300 if connecting from another device.
+Now you can connect to http://localhost:8000 or https://localhost:44300 (if you used the docker version you can connect only the https server).
 
-Once connected you just need to create a room, by clicking on the 'Create Room' button, then allow access to camera and microphone. Once the application has access to camera and microphone, you can select which camera, microphone  and speakers to use (the last one is available only on browsers based on Chromium). Then you can perform a loopback test if needed and then insert a name.
+**NOTE:** if you are connecting to the app from a different device with respect to the one where you started the server, you need to connect to the https version, so to https://\<host-ip-address\>:44300. The http version won't work, since you need a secure context in order to use AudioWorklets, which are the foundation of this app.
+
+
+
+Once connected you just need to create a room, by clicking on the 'Create Room' button, then allow access to camera and microphone. Once the application has access to camera and microphone, you can select which camera, microphone  and speakers to use (the last one is available only on browsers based on Chromium), and customize the size of the playout buffer, if needed. Then you can perform a loopback test if needed and then insert a name.
 
 After you inserted a name you can join the room by clicking on the 'Join' button. 
 
