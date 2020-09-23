@@ -1,0 +1,24 @@
+# Ignore git
+**/.git
+.gitignore
+
+# Ingore node files and folders
+**/node_modules
+**/npm-debug.log
+
+# Ignore documentation files
+documentation/
+.env.example
+README.md
+
+# Ingore env file
+.env
+
+# Ignore logs
+logs
+
+# Ignore ssl direcotry
+ssl
+
+# Ignore .dockerignore
+.dockerignore
