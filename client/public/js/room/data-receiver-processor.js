@@ -2,7 +2,7 @@
 
 const BUFF_SIZE = 128;
 const WINDOW_SIZE = 32;
-const IN_BUFFER = 4;
+let IN_BUFFER = 8; // This will be updated by the worklet once created, with the value selected by the user
 const LIMIT_NUM = 100
 const LIMIT = false
 
@@ -31,10 +31,10 @@ class Packet {
 
         // Get the packet number
         obj.packet_n = Number(dw.getBigUint64(offset))
-        offset+=BigInt64Array.BYTES_PER_ELEMENT;
+        offset+=BigUint64Array.BYTES_PER_ELEMENT;
 
         // Evaluate size of the Float32Array buffer with the samples
-        let dim = (buf.byteLength - BigInt64Array.BYTES_PER_ELEMENT)/Float32Array.BYTES_PER_ELEMENT;
+        let dim = (buf.byteLength - BigUint64Array.BYTES_PER_ELEMENT)/Float32Array.BYTES_PER_ELEMENT;
 
         // Create the Float32Array buffer
         obj.samples = new Float32Array(dim)
@@ -124,6 +124,7 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
         this.queue = new CircularBuffer(); // CircularBuffer
         this.begin = false; // Flag to decide whether to start or not the playback
         this.terminate = false; // To signal its destruction
+        this.log = false; // Flag to decide whether to send permormance statistics or not
 
         this.port.onmessage = (event) => {
             let obj = event.data;
@@ -137,38 +138,39 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
                     this.queue.enqueue(data.packet_n, data.samples);
                     this.n++;
 
-                    // Set first packet which may not be 0
-                    if(this.packet_n === -1) {
-                        this.packet_n = data.packet_n;
-                    }
+                    if(!this.begin) {
+                        // Set first packet which may not be 0 (they may arrive not in order)
+                        if(this.packet_n === -1 || data.packet_n < this.packet_n) {
+                            this.packet_n = data.packet_n;
+                        }
 
-                    // I received IN_BUFFER packets => start the playback
-                    if(this.n >= IN_BUFFER) {
-                        this.begin = true;
+                        // I received IN_BUFFER packets => start the playback
+                        if(this.n >= IN_BUFFER) {
+                            this.begin = true;
+                        }
                     }
 
                     break;
                 case 'destroy':
                     this.terminate = true;
                     break;
+                case 'log':
+                    this.log = obj.log;
+                    break;
+                case 'playoutBufferSize':
+                    IN_BUFFER = obj.playoutBufferSize;
+                    break
                 default:
                     // Nothing to do
             }
         };
-
-        // Send packetNumber to DataNode
-        this.port.postMessage({
-            type: 'packet_n-request',
-            packet_n: this.packet_n
-        });
-
     }
 
     process(inputs, outputs, parameters) {
         // The processor may have multiple outputs. Get the first output.
         const output = outputs[0][0];
 
-        // Check whete or not to start playback
+        // Check wheter or not to start playback
         if(this.begin) {
 
             // Check if packet is present
@@ -188,20 +190,22 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
                 }
             }
 
-            // Update packet number to request
-            this.packet_n++;
-
             // Send packetNumber to DataNode
             this.port.postMessage({
                 type: 'packet_n-request',
                 packet_n: this.packet_n
             });
 
-            // Send packetNumber to DataNode
-            this.port.postMessage({
-                type: 'performance',
-                packet_n: this.packet_n-1
-            });
+            if(this.log) {
+                // Send packetNumber to DataNode
+                this.port.postMessage({
+                    type: 'performance',
+                    packet_n: this.packet_n
+                });
+            }
+
+            // Update packet number to request
+            this.packet_n++;
         }
         else {
             // Set silence

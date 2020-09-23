@@ -25,12 +25,12 @@ class Packet {
         let offset = 0;
 
         // Create the ArrayBuffer
-        let buf = new ArrayBuffer(samples.length * Float32Array.BYTES_PER_ELEMENT + BigInt64Array.BYTES_PER_ELEMENT);
+        let buf = new ArrayBuffer(samples.length * Float32Array.BYTES_PER_ELEMENT + BigUint64Array.BYTES_PER_ELEMENT);
         let dw = new DataView(buf);
 
         // Set the packet number
         dw.setBigUint64(offset, packet_n);
-        offset+=BigInt64Array.BYTES_PER_ELEMENT;
+        offset+=BigUint64Array.BYTES_PER_ELEMENT;
 
         // Set all the samples
         for(let s of samples) {
@@ -65,10 +65,10 @@ class Packet {
 
         // Get the packet number
         obj.packet_n = Number(dw.getBigUint64(offset))
-        offset+=BigInt64Array.BYTES_PER_ELEMENT;
+        offset+=BigUint64Array.BYTES_PER_ELEMENT;
 
         // Evaluate size of the Float32Array buffer with the samples
-        let dim = (buf.byteLength - BigInt64Array.BYTES_PER_ELEMENT)/Float32Array.BYTES_PER_ELEMENT;
+        let dim = (buf.byteLength - BigUint64Array.BYTES_PER_ELEMENT)/Float32Array.BYTES_PER_ELEMENT;
 
         // Create the Float32Array buffer
         obj.samples = new Float32Array(dim)

@@ -14,16 +14,9 @@ const mediaConfiguration = {
     video: true,
     audio: {
         autoGainControl: false,
-        channelCount: 1,
         echoCancellation: false,
-        latency: {
-            min: 0.01,
-            max: 0.02
-        },
+        latency: 0,
         noiseSuppression: false,
-        sampleRate: 48000,
-        sampleSize: 16,
-        volume: 1.0
     }
 };
 
@@ -102,8 +95,20 @@ function isEmpty(obj) {
     return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
 
+// Resume audio context when carousel li elements are clicked
+$('#modal-indicators').children().click(() => {
+    if(audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+})
+
 // Modal controls
 function next() {
+    // Resume audio context
+    if(audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+
     // Go to next page of the modal
     $('#audio-options-carousel').carousel('next');
 }
@@ -692,9 +697,16 @@ function checkName(element) {
     document.getElementById('local-name-display').innerText = name;
 }
 
+function toggleLogging() {
+    LOG_DATA = !LOG_DATA;
+    localStorage['logging'] = LOG_DATA;
+}
+
 function joinAudio() {
     // Resume audio context
-    audioContext.resume();
+    if(audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
 
     // Disconnect all of the processing
     analyser.disconnect();
@@ -1078,6 +1090,21 @@ socket.on('room-checked', (exists, error) => {
             // Update list of devices
             updateDeviceList();
 
+            let slider = document.getElementById('playoutBufferSize');
+            let sliderValue = document.getElementById('playoutBufferSizeValue');
+            console.log(sliderValue);
+            if(localStorage['playoutBufferSize']) {
+                sliderValue.innerHTML = localStorage['playoutBufferSize'];
+            }
+            else {
+                sliderValue.innerHTML = 8;
+            }
+            slider.value = sliderValue.innerHTML;
+            slider.oninput = function() {
+                sliderValue.innerHTML = this.value;
+                localStorage['playoutBufferSize'] = this.value;
+            }
+
             // Load previous name
             if(localStorage['name'] !== undefined) {
                 let val = localStorage['name'].substring(0, localStorage['name'].length <= 25 ? localStorage['name'].length : 25);
@@ -1085,6 +1112,12 @@ socket.on('room-checked', (exists, error) => {
                 localStorage['name'] = val;
             }
             document.getElementById('name').value = name;
+
+            // Load logging selection
+            if(localStorage['logging'] !== undefined) {
+                LOG_DATA = (localStorage['logging'] === 'true');
+                $('#customSwitch2').prop( "checked", LOG_DATA);
+            }
 
             // Enable the join button if the name is not empty
             if(name !== '') {
@@ -1121,7 +1154,7 @@ socket.on('loopback-server-client', (buf) => {
             receiverAudioWorklet.port.postMessage({
                 type: 'packet',
                 data: buf
-            }, [buf]);
+            });
         }
         else {
             //console.log('Packet dropped -'+local_packet_n);

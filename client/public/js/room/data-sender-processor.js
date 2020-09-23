@@ -28,12 +28,12 @@ class Packet {
         let offset = 0;
 
         // Create the ArrayBuffer
-        let buf = new ArrayBuffer(samples.length * Float32Array.BYTES_PER_ELEMENT + BigInt64Array.BYTES_PER_ELEMENT);
+        let buf = new ArrayBuffer(samples.length * Float32Array.BYTES_PER_ELEMENT + BigUint64Array.BYTES_PER_ELEMENT);
         let dw = new DataView(buf);
 
         // Set the packet number
         dw.setBigUint64(offset, packet_n);
-        offset+=BigInt64Array.BYTES_PER_ELEMENT;
+        offset+=BigUint64Array.BYTES_PER_ELEMENT;
 
         // Set all the samples
         for(let s of samples) {
@@ -54,6 +54,7 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         this.terminate = false; // To signal its destruction
         this.loopback = false; // To signal if it is in loopback state
         this.audioLoopback = false; // This is needed in order to not mute the source when the peer is set in the audio Loopback
+        this.log = false; // Flag to decide whether to send permormance statistics or not
 
         this.port.onmessage = (event) => {
             let obj = event.data;
@@ -70,6 +71,10 @@ class DataSenderProcessor extends AudioWorkletProcessor {
                     break;
                 case 'audioLoopback':
                     this.audioLoopback = obj.audioLoopback;
+                    break;
+                case 'log':
+                    this.log = obj.log;
+                    break;
             }
         }
     }
@@ -85,7 +90,15 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         // The processor may have multiple outputs. Get the first output.
         const output = outputs[0][0];
 
-        if(inputChannel0 !== undefined && (!this.muted || this.audioLoopback) && !inputChannel0.every((value) => value === 0) && !this.loopback) {
+        if(this.log) {
+            // Send a message to the main thread for process iteration measures
+            this.port.postMessage({
+                type: 'process_iteration',
+                packet_n: this.packet_n
+            });
+        }
+
+        if(inputChannel0 !== undefined && (!this.muted || this.audioLoopback) && inputChannel0.some((value) => value !== 0) && !this.loopback) {
             // Send a message to the main thread for performance measures
             this.port.postMessage({
                 type: 'performance',
@@ -98,11 +111,12 @@ class DataSenderProcessor extends AudioWorkletProcessor {
                 packet_n: this.packet_n
             });
 
-            // Send the buffer to DataNode (transferring the ownership)
-            this.port.postMessage({
+            // Send the buffer to DataNode (no transferring the ownership)
+            let message = {
                 type: 'packet',
                 buf: buf
-            }, [buf]);
+            }
+            this.port.postMessage(message);
         }
         else if(this.loopback) {
             this.port.postMessage({
@@ -117,7 +131,7 @@ class DataSenderProcessor extends AudioWorkletProcessor {
         }
 
         if(inputChannel0 !== undefined) {
-            // Update packet number
+            // It has a input, so update packet number
             this.packet_n++;
         }
 

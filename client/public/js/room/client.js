@@ -5,6 +5,11 @@
 // false -> Use DataChannel and AudioWorklets
 const USE_MEDIA_AUDIO = false;
 
+// Logging
+// false -> Do not log data
+// true -> Log data
+let LOG_DATA = false;
+
 // Loopback method
 // true -> Use loopback at an audio level
 // false -> Use loopback at the dataChannel level
@@ -27,7 +32,7 @@ const offerOptions = {
 
 // Audio context options
 const audioContextOptions = {
-    latencyHint: 'interactive',
+    latencyHint: 0,
     sampleRate: 48000
 }
 
@@ -118,7 +123,7 @@ class Client {
         this.remoteAudioDestination = audioContext.createMediaStreamDestination();
         this.dataChannel = null;
         this.controlChannel = null;
-        this.packet_n = 0;
+        this.packet_n = -1;
         this.otherAudioContextRunning = false;
         this.name = ''; // Name of the other peer
         this.createdPacket_n = -1; // Keep track of the number of the created packet for loopback reasons
@@ -126,6 +131,9 @@ class Client {
         this.audioLoopback = false; // Loopback at Audio level
         this.remoteAudioLoopbackDestination = audioContext.createMediaStreamDestination();
         this.remoteAudioLoopbackDestinationToSource = audioContext.createMediaStreamSource(this.remoteAudioLoopbackDestination.stream); // This will be used as source of the audio worklet in case of loopback
+        this.stats = {
+            packetDropCounter: 0
+        };
 
         // Create DOM elements for peer stream
         let div = document.getElementById('stream-elements');
@@ -295,10 +303,17 @@ class Client {
             this.localProcessingNode.port.onmessage = (event) => {
                 if(this.otherAudioContextRunning && this.dataChannel.readyState === 'open') {
                     switch (event.data.type) {
+                        case 'process_iteration':
+                            if(LOG_DATA) {
+                                // Keep track of when the packet has been created (when the process method of the AudioWorklet has been called)
+                                performance.mark(`data-process_iteration-${socket.id}-${this.id}-${event.data.packet_n}`);
+                            }
+                            break;
                         case 'performance':
-                            // Keep track of when the packet has been created (when the process method of the AudioWorklet has been called)
-                            performance.mark(`data-created-${socket.id}-${this.id}-${event.data.packet_n}`);
-                            this.createdPacket_n = event.data.packet_n;
+                            if(LOG_DATA) {
+                                // Keep track of when the packet has been created (when the process method of the AudioWorklet has been called)
+                                performance.mark(`data-created-${socket.id}-${this.id}-${event.data.packet_n}`);
+                            }
                             break;
                         case 'packet':
                             // Take the generated packet and send it to the other peer
@@ -306,16 +321,17 @@ class Client {
                             let packet_n = Packet.getPacketNumber(buf);
 
                             if(this.dataChannel.readyState === 'open') {
+                                if(LOG_DATA) {
+                                    // Save time of sent data
+                                    performance.mark(`data-sent-${socket.id}-${this.id}-${packet_n}`);
+                                }
+
                                 // Send the ArrayBuffer
                                 this.dataChannel.send(buf);
                             }
 
                             // Update the created pakcet num (for loopback reasons)
-                            this.createdPacket_n++;
-                            console.log(this.createdPacket_n)
-
-                            // Save time of sent data
-                            performance.mark(`data-sent-${socket.id}-${this.id}-${packet_n}`);
+                            this.createdPacket_n=packet_n;
                             break;
                         case 'loopback':
                             if(event.data.packet_n > this.createdPacket_n) {
@@ -328,6 +344,10 @@ class Client {
                     console.log('Not running')
                 }
             };
+            this.localProcessingNode.port.postMessage({
+                type: 'log',
+                log: LOG_DATA
+            })
 
             // Node for receiving data
             this.remoteProcessingNode = new DataReceiverNode(audioContext);
@@ -335,14 +355,26 @@ class Client {
                 switch (event.data.type) {
                     case 'packet_n-request':
                         // Update localPacket number for filtering (below)
-                        this.packet_n = event.data.packet_n;
+                        if(event.data.packet_n > this.packet_n) {
+                            this.packet_n = event.data.packet_n;
+                        }
                         break;
                     case 'performance':
-                        // Save time of sent data
-                        performance.mark(`data-played-${this.id}-${socket.id}-${event.data.packet_n}`);
+                        if(LOG_DATA) {
+                            // Save time of sent data
+                            performance.mark(`data-played-${this.id}-${socket.id}-${event.data.packet_n}`);
+                        }
                         break;
                 }
             };
+            this.remoteProcessingNode.port.postMessage({
+                type: 'log',
+                log: LOG_DATA
+            })
+            this.remoteProcessingNode.port.postMessage({
+                type: 'playoutBufferSize',
+                playoutBufferSize: document.getElementById('playoutBufferSize').value
+            })
         }
 
         if(this.offering) {
@@ -469,17 +501,24 @@ class Client {
                 // If packet_n is >= last packet received => send it to the processor
                 // Otherwise drop it (to save time)
                 if(packet_n >= this.packet_n){
-                    // Save the time at which we receive data
-                    performance.mark(`data-received-${this.id}-${socket.id}-${packet_n}`);
+                    if(LOG_DATA) {
+                        // Save the time at which we receive data
+                        performance.mark(`data-received-${this.id}-${socket.id}-${packet_n}`);
+                    }
 
                     // Process data (tranfer of ownership)
-                    this.remoteProcessingNode.port.postMessage({
+                    let message = {
                         type: 'packet',
                         data: buf
-                    }, [buf]);
+                    }
+                    this.remoteProcessingNode.port.postMessage(message);
                 }
                 else {
-                    //console.log(`Packet dropped ${packet_n} - ${this.packet_n}`);
+                    if(LOG_DATA) {
+                        // Save the time at which we discard data
+                        performance.mark(`data-discarded-${this.id}-${socket.id}-${packet_n}`);
+                    }
+                    this.stats.packetDropCounter++;
                 }
             }
             else {
@@ -543,8 +582,10 @@ class Client {
                     }
 
                     if(audioContext.state === 'running') {
-                        // Processing started
-                        performance.mark('processing-started');
+                        if(LOG_DATA) {
+                            // Processing started
+                            performance.mark('processing-started');
+                        }
                     }
 
                     this.otherAudioContextRunning = true;
@@ -628,8 +669,10 @@ class Client {
                 console.log(message);
 
                 if(this.otherAudioContextRunning && message.audioContextRunning) {
-                    // Processing started
-                    performance.mark('processing-started');
+                    if(LOG_DATA) {
+                        // Processing started
+                        performance.mark('processing-started');
+                    }
                 }
             }
         }

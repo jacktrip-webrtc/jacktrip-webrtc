@@ -236,3 +236,19 @@ meter::-webkit-meter-even-less-good-value {
 .custom-control-input:focus ~ .custom-control-label::before {
     box-shadow: 0 0 0 0.2rem rgba(162, 161, 230, 1) ;
 }
+
+.custom-range::-webkit-slider-thumb {
+    background: #6d6ae6;
+}
+
+.custom-range::-webkit-slider-thumb:active {
+    background: #5a58bf;
+}
+
+.custom-range::-moz-range-thumb {
+  background: #6d6ae6;
+}
+
+.custom-range::-moz-range-thumb:active {
+  background: #5a58bf;
+}

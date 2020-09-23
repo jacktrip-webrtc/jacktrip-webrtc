@@ -12,7 +12,6 @@
   "contributors": [],
   "license": "GPL-3.0",
   "dependencies": {
-    "axios": "^0.19.2",
     "socket.io-client": "^2.3.0"
   }
 }

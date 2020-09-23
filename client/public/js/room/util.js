@@ -22,7 +22,7 @@ function getLimitedStats(start=0, end=100) {
     .filter((el) => {
         let tmp = el.name.split("-");
         let packet_n = parseInt(tmp[tmp.length-1]);
-        if(packet_n !== NaN) {
+        if(!isNaN(packet_n)) {
             if(packet_n<start || packet_n>=end) {
                 return false;
             }
