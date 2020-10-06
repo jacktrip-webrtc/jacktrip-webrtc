@@ -15,6 +15,9 @@ let LOG_DATA = false;
 // false -> Use loopback at the dataChannel level
 let USE_AUDIO_LOOPBACK = true;
 
+// RTT Measurement frequency (every RTT_PACKET_N packets send a RTT Timing measure)
+let RTT_PACKET_N = 500;
+
 // Peer configuration
 const configuration = {
     iceServers: [
@@ -47,9 +50,9 @@ audioContext.onstatechange = () => {
 
 // AudioWorklet for sending data
 class DataSenderNode extends AudioWorkletNode {
-  constructor(context) {
-    super(context, 'data-sender-processor');
-  }
+    constructor(context) {
+        super(context, 'data-sender-processor');
+    }
 }
 
 // AudioWorklet for receiving data
@@ -132,8 +135,17 @@ class Client {
         this.remoteAudioLoopbackDestination = audioContext.createMediaStreamDestination();
         this.remoteAudioLoopbackDestinationToSource = audioContext.createMediaStreamSource(this.remoteAudioLoopbackDestination.stream); // This will be used as source of the audio worklet in case of loopback
         this.stats = {
-            packetDropCounter: 0
+            packetDropCounter: 0,
+            packetReceivedCounter: 0,
+            totalPacketCounter: 0
         };
+        this.statsInterval = undefined; // Interval to update displayed stats
+        this.dim = document.getElementById('playoutBufferSize').value; // Get the dim of the playout buffer_size
+        this.min = this.dim;
+        this.RTTTiming = []; // Array which will containt object to estimate the RTT
+                             // Objects have 2 properties
+                             // - time: performance.now() (ms)
+                             // - packet_n: packet number
 
         // Create DOM elements for peer stream
         let div = document.getElementById('stream-elements');
@@ -320,6 +332,14 @@ class Client {
                             let buf = event.data.buf;
                             let packet_n = Packet.getPacketNumber(buf);
 
+                            if(packet_n % RTT_PACKET_N === 0) {
+                                // Save timing of the generated packet
+                                this.RTTTiming.push({
+                                    time: performance.now(),
+                                    packet_n: packet_n
+                                });
+                            }
+
                             if(this.dataChannel.readyState === 'open') {
                                 if(LOG_DATA) {
                                     // Save time of sent data
@@ -347,7 +367,11 @@ class Client {
             this.localProcessingNode.port.postMessage({
                 type: 'log',
                 log: LOG_DATA
-            })
+            });
+            this.localProcessingNode.port.postMessage({
+                type: 'channelList',
+                channelList: document.getElementById('audio-source-button').getAttribute('data-channel-list')
+            });
 
             // Node for receiving data
             this.remoteProcessingNode = new DataReceiverNode(audioContext);
@@ -364,6 +388,26 @@ class Client {
                             // Save time of sent data
                             performance.mark(`data-played-${this.id}-${socket.id}-${event.data.packet_n}`);
                         }
+                        break;
+                    case 'minPlayoutBufferSize':
+                        let curr = event.data.current;
+                        if(event.data.min < this.min) {
+                            this.min = event.data.min;
+                        }
+
+                        let currPerc = Math.min(curr/this.dim * 100, 100);
+                        let minPerc = Math.min(this.min/this.dim * 100, 100);
+
+                        let meterValue = document.getElementById(`custom-meter-value-${this.id}`);
+                        let meterMin = document.getElementById(`custom-meter-min-${this.id}`);
+
+                        let meterValueValue = document.getElementById(`custom-meter-value-value-${this.id}`);
+                        let meterMinValue = document.getElementById(`custom-meter-min-value-${this.id}`);
+
+                        meterValue.style.width = `${currPerc}%`
+                        meterMin.style.width = `${minPerc}%`
+                        meterValueValue.innerText = curr;
+                        meterMinValue.innerText = this.min;
                         break;
                 }
             };
@@ -457,6 +501,9 @@ class Client {
         this.container.remove();
         if(!USE_MEDIA_AUDIO) {
             removeLoopbackEntry(this.id);
+            if(this.statsInterval) {
+                clearInterval(this.statsInterval);
+            }
         }
 
         // Create toast notification
@@ -469,6 +516,18 @@ class Client {
 
         div.appendChild(p);
         createToast('Participant left', div, 1500);
+
+        // Add button to delete stats
+        let div1 = document.getElementById(`stats-${this.id}`);
+
+        let button = document.createElement('button');
+        button.className = "btn btn-blu mx-auto";
+        button.innerText = "Delete previous stats";
+        button.onclick = () => {
+            div1.remove();
+        }
+
+        div1.appendChild(button);
     }
 
     setUpDataChannel() {
@@ -497,6 +556,7 @@ class Client {
 
                 // Get packet number
                 let packet_n = Packet.getPacketNumber(buf);
+                this.stats.totalPacketCounter++;
 
                 // If packet_n is >= last packet received => send it to the processor
                 // Otherwise drop it (to save time)
@@ -512,6 +572,7 @@ class Client {
                         data: buf
                     }
                     this.remoteProcessingNode.port.postMessage(message);
+                    this.stats.packetReceivedCounter++;
                 }
                 else {
                     if(LOG_DATA) {
@@ -519,6 +580,14 @@ class Client {
                         performance.mark(`data-discarded-${this.id}-${socket.id}-${packet_n}`);
                     }
                     this.stats.packetDropCounter++;
+                }
+
+                if(packet_n % RTT_PACKET_N === 0) {
+                    // Send timing measure
+                    let message = {
+                       rtt: packet_n
+                    }
+                    this.controlChannel.send(JSON.stringify(message));
                 }
             }
             else {
@@ -572,11 +641,11 @@ class Client {
                         // Attach source and dest
                         this.localAudioSource.connect(this.localProcessingNode);
                         if(activateAudioSelection && document.getElementById('audio-output-button').audioId !== undefined && (typeof this.audioElement.setSinkId === 'function')) {
-                            this.localProcessingNode.connect(this.remoteAudioDestination);
+                            this.localProcessingNode.connect(this.remoteProcessingNode); // Connected this way to have 2 output to handle stereo (If no input is provided to the remoteAudioDestination => output = mono)
                             this.remoteProcessingNode.connect(this.remoteAudioDestination);
                         }
                         else {
-                            this.localProcessingNode.connect(audioContext.destination);
+                            this.localProcessingNode.connect(this.remoteProcessingNode); // Connected this way to have 2 output to handle stereo (If no input is provided to the remoteAudioDestination => output = mono)
                             this.remoteProcessingNode.connect(audioContext.destination);
                         }
                     }
@@ -623,6 +692,13 @@ class Client {
 
                 if(!USE_MEDIA_AUDIO) {
                     createLoopbackEntry(this.id, this.name, () => { this.setLoopback(); }, () => { this.removeLoopback(); });
+                    this.createStatsEntry();
+                    // Every second update stats
+                    if(!this.statsInterval) {
+                        this.statsInterval = setInterval(() => {
+                            this.updateDisplayedStats();
+                        }, 1000);
+                    }
                 }
             }
             else if (message.loopback !== undefined) {
@@ -637,6 +713,18 @@ class Client {
                     this.loopbackMessage.classList.remove('visible');
                     this.loopbackMessage.classList.add('invisible');
                 }
+            }
+            else if (message.rtt !== undefined) {
+                // Get measure associated to the current packet number
+                let previous;
+                do {
+                    previous = this.RTTTiming.shift();
+                } while (previous.packet_n !== message.rtt);
+
+                // Evaluate RTT
+                let rtt = (performance.now() - previous.time);
+                let rtt_element = document.getElementById(`rtt-${this.id}`);
+                rtt_element.innerText = rtt.toFixed(2);
             }
         });
     }
@@ -849,10 +937,136 @@ class Client {
             [...stats]
             .map(report => report[1])
             .filter(report => report.type === 'data-channel')
+            .filter(report => report.label === "audio")
             .forEach(report => {
                 console.log(report);
             });
         })
         .catch((e) => console.error(e));
+    }
+
+    createStatsEntry() {
+        let div = document.getElementById('stats-info');
+
+        // Create div for the whole stats
+        let divContainer = document.createElement('div');
+        divContainer.id = `stats-${this.id}`;
+        divContainer.className = "d-flex flex-column w-100 mb-3"
+
+        // Title is the name of the user, for simplicity of understanding
+        let titleDiv = document.createElement('div');
+        titleDiv.className = "d-flex flex-column w-100"
+
+        let title = document.createElement('h6');
+        title.innerText = this.name;
+        title.className = "h6 mb-3 mx-auto"
+
+        // Div with meter stats
+        let meterDiv = document.createElement('div');
+        meterDiv.className = "d-flex mb-1"
+
+        let meterDescription = document.createElement('p');
+        meterDescription.innerText = "Playout buffer"
+        meterDescription.className = "col-5 col-sm-4"
+
+        // Div with meter and stats
+        let meterStats = document.createElement('div');
+        meterStats.className = "col-7 col-sm-8 px-0"
+
+        // Meter: is created bu 3 divs: 1 represent the container
+        let meter = document.createElement('div');
+        meter.className = "custom-meter-container w-100 my-2"
+
+        // 1 represents the number of packets in the queue
+        let meterValue = document.createElement('div');
+        meterValue.id = `custom-meter-value-${this.id}`
+        meterValue.className = "custom-meter-value"
+
+        // 1 represents the min number of packets in the queue
+        let meterMinValue = document.createElement('div');
+        meterMinValue.id = `custom-meter-min-${this.id}`
+        meterMinValue.className = "custom-meter-min"
+
+        let p1 = document.createElement('p');
+        p1.innerHTML = `Current value: <strong id="custom-meter-value-value-${this.id}"> ${document.getElementById('playoutBufferSize').value} </strong>`;
+        p1.className = "mb-1";
+
+        let p2 = document.createElement('p');
+        p2.innerHTML = `Min value: <strong id="custom-meter-min-value-${this.id}"> ${document.getElementById('playoutBufferSize').value} </strong>`;
+        p2.className = "mb-1";
+
+        // Div with pakcet stats
+        let statsDiv = document.createElement('div');
+        statsDiv.className = "d-flex mb-3";
+
+        let statsDescription = document.createElement('p');
+        statsDescription.innerText = "Packet Stats"
+        statsDescription.className = "col-5 col-sm-4"
+
+        let packetStatsDiv = document.createElement('div');
+        packetStatsDiv.className = "d-flex flex-column col-7 col-sm-8 px-0";
+
+        let p3 = document.createElement('p');
+        p3.innerHTML = `Received packets: <strong id="received-packets-${this.id}"> ${(this.stats.packetReceivedCounter / this.stats.totalPacketCounter * 100).toFixed(2)}% </strong>`;
+        p3.className = "mb-1";
+
+        let p4 = document.createElement('p');
+        p4.innerHTML = `Discarded packets: <strong id="discarded-packets-${this.id}"> ${(this.stats.packetDropCounter / this.stats.totalPacketCounter * 100).toFixed(2)}% </strong>`;
+        p4.className = "mb-1";
+
+        // Div with timing related stats
+        let timingDiv = document.createElement('div');
+        timingDiv.className = "d-flex mb-3";
+
+        let timingDescription = document.createElement('p');
+        timingDescription.innerText = "Timing Stats"
+        timingDescription.className = "col-5 col-sm-4"
+
+        // Div with timing stats
+        let timingStatsDiv = document.createElement('div');
+        timingStatsDiv.className = "d-flex flex-column col-7 col-sm-8 px-0";
+
+        let p5 = document.createElement('p');
+        p5.innerHTML = `RTT: <strong id="rtt-${this.id}"> - </strong> ms`;
+        p5.className = "mb-1";
+
+        timingStatsDiv.appendChild(p5);
+
+        timingDiv.appendChild(timingDescription);
+        timingDiv.appendChild(timingStatsDiv);
+
+        packetStatsDiv.appendChild(p3);
+        packetStatsDiv.appendChild(p4);
+
+        statsDiv.appendChild(statsDescription);
+        statsDiv.appendChild(packetStatsDiv);
+
+        meter.appendChild(meterValue);
+        meter.appendChild(meterMinValue);
+
+        meterStats.appendChild(meter);
+        meterStats.appendChild(p1);
+        meterStats.appendChild(p2);
+
+        meterDiv.appendChild(meterDescription);
+        meterDiv.appendChild(meterStats);
+
+        titleDiv.appendChild(title);
+
+        divContainer.appendChild(titleDiv);
+        divContainer.appendChild(meterDiv);
+        divContainer.appendChild(statsDiv);
+        divContainer.appendChild(timingDiv)
+
+        div.appendChild(divContainer);
+    }
+
+    updateDisplayedStats() {
+        // Update stats about received packets and discarded ones
+        let receivedPackets = document.getElementById(`received-packets-${this.id}`);
+        receivedPackets.innerText = `${(this.stats.packetReceivedCounter / this.stats.totalPacketCounter * 100).toFixed(2)}%`;
+
+        let discardedPackets = document.getElementById(`discarded-packets-${this.id}`);
+        discardedPackets.innerText = `${(this.stats.packetDropCounter / this.stats.totalPacketCounter * 100).toFixed(2)}%`;
     }
 }

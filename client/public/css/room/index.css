@@ -136,6 +136,17 @@ body {
     white-space: normal;
 }
 
+.dropdown-menu {
+    cursor: pointer;
+}
+
+.dropdown-menu a:hover
+{
+  color: #fff;
+  background-color: #6d6ae6;
+  border-color: #fff;
+}
+
 .pl-3-per {
     padding-left: 4%;
 }
@@ -176,6 +187,10 @@ meter::-webkit-meter-even-less-good-value {
 
     .custom-message-conatiner {
         width: 100%;
+    }
+
+    #settingsButton {
+        margin-top: 0.75em;
     }
 }
 
@@ -251,4 +266,24 @@ meter::-webkit-meter-even-less-good-value {
 
 .custom-range::-moz-range-thumb:active {
   background: #5a58bf;
+}
+
+.custom-meter-container {
+    background-color: #e9edf2;
+    height: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.custom-meter-value {
+    background-color: #6d6ae6;
+    height: 10px;
+    width: 100%;
+}
+
+.custom-meter-min {
+    border-right: 3px solid #ffee36;
+    height: 10px;
+    transform: translateY(-100%);
+    width: 100%;
 }

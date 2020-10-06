@@ -152,8 +152,8 @@ $('#audio-options-carousel').on('slide.bs.carousel', function(e) {
     }
 });
 
-// Handle click on lists
-$('.dropdown-menu').click(function(event){
+// Handle click on dropdown-input-output lists
+$('.dropdown-input-output').click(function(event){
     // Check if the selected device is different from the previous one
     if(document.getElementById(this.id+'-button').audioId !== event.target.audioId) {
         // Update selected item
@@ -162,6 +162,18 @@ $('.dropdown-menu').click(function(event){
 
         // Update media stream
         updateMediaStream();
+    }
+});
+
+// Handle click on dropdown-source lists
+$('.dropdown-source').click(function(event){
+    console.log(event.target.getAttribute("data-channel-list"));
+    // Check if the selected device is different from the previous one
+    if(document.getElementById(this.id+'-button').getAttribute("data-channel-list") !== event.target.getAttribute("data-channel-list")) {
+        // Update selected item
+        document.getElementById(this.id+'-button').innerText = event.target.innerText;
+        document.getElementById(this.id+'-button').setAttribute("data-channel-list", event.target.getAttribute("data-channel-list"));
+        localStorage['channel-list'] = event.target.getAttribute("data-channel-list");
     }
 });
 
@@ -569,6 +581,10 @@ function createAudioWorklets() {
                     break;
             }
         };
+        senderAudioWorklet.port.postMessage({
+            type: 'channelList',
+            channelList: document.getElementById('audio-source-button').getAttribute('data-channel-list')
+        });
 
         // Node for receiving data
         receiverAudioWorklet = new DataReceiverNode(audioContext);
@@ -580,6 +596,10 @@ function createAudioWorklets() {
                     break;
             }
         };
+        receiverAudioWorklet.port.postMessage({
+            type: 'playoutBufferSize',
+            playoutBufferSize: document.getElementById('playoutBufferSize').value
+        });
 
         // Reset packet_n
         packet_n = 0;
@@ -594,7 +614,7 @@ function createAudioWorklets() {
 
             // Start processing
             input.connect(senderAudioWorklet);
-            senderAudioWorklet.connect(audioContext.destination);
+            senderAudioWorklet.connect(receiverAudioWorklet);
             if(activateAudioSelection && sinkOk) {
                 receiverAudioWorklet.connect(outputAudioWorklets);
             }
@@ -898,6 +918,11 @@ function showSettingsModal() {
     $('#settingsModal').modal('show');
 }
 
+function showStatsModal() {
+    // Open settings modal
+    $('#statsModal').modal('show');
+}
+
 function createLoopbackEntry(id, name, startCallback, stopCallback) {
     let entryDiv = document.getElementById('loopbackEntries');
 
@@ -1090,9 +1115,39 @@ socket.on('room-checked', (exists, error) => {
             // Update list of devices
             updateDeviceList();
 
+            // Perload channel selection
+            if(localStorage['channel-list']) {
+                // Check that the channel list is valid
+                let channelList = localStorage['channel-list'];
+                let selectedElement = document.getElementById('audio-source').children[0];
+                for(let el of document.getElementById('audio-source').children) {
+                    if(el.getAttribute('data-channel-list') === channelList) {
+                        selectedElement = el;
+                        break;
+                    }
+                }
+
+                // Use selected element, which contains or the selected element or the default value
+                let btn = document.getElementById('audio-source-button');
+                btn.innerText = selectedElement.innerText;
+                btn.setAttribute('data-channel-list', selectedElement.getAttribute('data-channel-list'));
+
+                // Store a valid value in case the previous value was not valid
+                localStorage['channel-list'] = selectedElement.getAttribute('data-channel-list');
+            }
+            else {
+                // Use the default value (which is the first element)
+                let selectedElement = document.getElementById('audio-source').children[0];
+                let btn = document.getElementById('audio-source-button');
+                btn.innerText = selectedElement.innerText;
+                btn.setAttribute('data-channel-list', selectedElement.getAttribute('data-channel-list'));
+            }
+
+            // Update playout buffer size slider
             let slider = document.getElementById('playoutBufferSize');
             let sliderValue = document.getElementById('playoutBufferSizeValue');
-            console.log(sliderValue);
+
+            // Check if it is present a value from local storage else use default value of 8
             if(localStorage['playoutBufferSize']) {
                 sliderValue.innerHTML = localStorage['playoutBufferSize'];
             }
@@ -1100,6 +1155,8 @@ socket.on('room-checked', (exists, error) => {
                 sliderValue.innerHTML = 8;
             }
             slider.value = sliderValue.innerHTML;
+
+            // Update playout buffer on slide
             slider.oninput = function() {
                 sliderValue.innerHTML = this.value;
                 localStorage['playoutBufferSize'] = this.value;

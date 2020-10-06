@@ -73,7 +73,7 @@
                                           <button id="video-input-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                             Select webcam <i class="fas fa-sort-dow"></i>
                                           </button>
-                                          <div id="video-input" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                          <div id="video-input" class="dropdown-menu dropdown-input-output" aria-labelledby="dropdownMenuButton">
 
                                           </div>
                                         </div>
@@ -105,7 +105,7 @@
                                           <button id="audio-input-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                             Select microphone
                                           </button>
-                                          <div id="audio-input" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                          <div id="audio-input" class="dropdown-menu dropdown-input-output" aria-labelledby="dropdownMenuButton">
 
                                           </div>
                                         </div>
@@ -125,6 +125,19 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Select source</p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="audio-source-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select channel
+                                          </button>
+                                          <div id="audio-source" class="dropdown-menu dropdown-source" aria-labelledby="dropdownMenuButton">
+                                            <a class="dropdown-item" data-channel-list="0">1 (Mono)</a>
+                                            <a class="dropdown-item" data-channel-list="1">2 (Mono)</a>
+                                            <a class="dropdown-item" data-channel-list="0,1">1 & 2 (Stereo)</a>
+                                          </div>
+                                        </div>
+                                    </div>
                                     <div id="audio-out-activate" class="d-flex flex-row mb-3">
                                         <div class="col-12">
                                             <div class="custom-control custom-switch">
@@ -139,7 +152,7 @@
                                           <button id="audio-output-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                             Select speaker <i class="fas fa-sort-dow"></i>
                                           </button>
-                                          <div id="audio-output" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                          <div id="audio-output" class="dropdown-menu dropdown-input-output" aria-labelledby="dropdownMenuButton">
 
                                           </div>
                                         </div>
@@ -253,7 +266,7 @@
 
         <!-- Modal -->
         <div class="modal fade" id="settingsModal" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                 <div class="modal-content mx-2">
                     <div class="modal-body d-flex flex-column">
                         <div class="d-flex flex-row mb-3">
@@ -289,6 +302,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="statsModal" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row mb-3">
+                            <h4 class="h4 my-0 mx-auto">Stats</h4>
+                            <button type="button" class="close btn-no-outline" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div id="stats-info" class="flex-column">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="btn-toolbar w-100 d-flex justify-content-center button-controls fixed-bottom" role="toolbar" aria-label="Toolbar with button groups">
@@ -305,6 +338,7 @@
             <button id="settingsButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="showSettingsModal()"><i class="fas fa-cogs"></i></button>
         </div>
         <span id="loopbackCounter" class="badge badge-light position-absolute badge-loopback"></span>
+        <button id="settingsButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button ml-3" onclick="showStatsModal()"><i class="far fa-chart-bar"></i></button>
     </div>
 
     <script src="/js/room/index.js" charset="utf-8"></script>

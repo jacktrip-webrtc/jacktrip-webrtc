@@ -25,7 +25,7 @@ class Packet {
         let offset = 0;
 
         // Create the ArrayBuffer
-        let buf = new ArrayBuffer(samples.length * Float32Array.BYTES_PER_ELEMENT + BigUint64Array.BYTES_PER_ELEMENT);
+        let buf = new ArrayBuffer(samples.length * Int16Array.BYTES_PER_ELEMENT + BigUint64Array.BYTES_PER_ELEMENT);
         let dw = new DataView(buf);
 
         // Set the packet number
@@ -34,8 +34,9 @@ class Packet {
 
         // Set all the samples
         for(let s of samples) {
-            dw.setFloat32(offset, s);
-            offset += Float32Array.BYTES_PER_ELEMENT;
+            let s16 = Packet.Float32ToInt16(s);
+            dw.setInt16(offset, s16);
+            offset += Int16Array.BYTES_PER_ELEMENT;
         }
 
         // Return the ArrayBuffer
@@ -68,14 +69,14 @@ class Packet {
         offset+=BigUint64Array.BYTES_PER_ELEMENT;
 
         // Evaluate size of the Float32Array buffer with the samples
-        let dim = (buf.byteLength - BigUint64Array.BYTES_PER_ELEMENT)/Float32Array.BYTES_PER_ELEMENT;
+        let dim = (buf.byteLength - BigUint64Array.BYTES_PER_ELEMENT)/Int16Array.BYTES_PER_ELEMENT;
 
         // Create the Float32Array buffer
         obj.samples = new Float32Array(dim)
 
         // Load the samples
-        for(let i = 0; i<dim; i++, offset+=Float32Array.BYTES_PER_ELEMENT) {
-            obj.samples[i] = dw.getFloat32(offset);
+        for(let i = 0; i<dim; i++, offset+=Int16Array.BYTES_PER_ELEMENT) {
+            obj.samples[i] = Packet.Int16ToFloat32(dw.getInt16(offset));
         }
 
         // Return the object
@@ -124,5 +125,45 @@ class Packet {
 
         // Return the buffer
         return buf;
+    }
+
+    /**
+     * Method to convert from Float32 to Int16
+     *
+     * @static
+     *
+     * @param {Float32} s32
+     *    The Float32 sample
+     *
+     * @returns {Int16}
+     *    Returns the Int16 sample
+    **/
+    static Float32ToInt16(s32) {
+        // Convert the range [-1, 1] of Float32 in [-32768, 32767] of Int16
+        let s16 = Math.floor(32768 * s32);
+        s16 = Math.min(32767, s16);
+        s16 = Math.max(-32768, s16);
+
+        return s16;
+    }
+
+    /**
+     * Method to convert from Float32 to Int16
+     *
+     * @static
+     *
+     * @param {Int16} s16
+     *    The Int16 sample
+     *
+     * @returns {Float32}
+     *    Returns the Float32 sample
+    **/
+    static Int16ToFloat32(s16) {
+        // Convert the range [-32768, 32767] of Int16 in [-1, 1] of Float32
+        let s32 = s16 / 32768;
+        s32 = Math.min(1, s32);
+        s32 = Math.max(-1, s32);
+
+        return s32;
     }
 }
