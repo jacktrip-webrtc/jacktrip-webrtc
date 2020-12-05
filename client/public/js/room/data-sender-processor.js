@@ -5,6 +5,7 @@ const LIMIT = false
 
 /*** Copy of class Packet from packet.js due to limitations of import inside workers ***/
 class Packet {
+
     /**
      * Method to create an ArrayBuffer given a JS Object
      *
@@ -71,7 +72,9 @@ class Packet {
     **/
     static Float32ToInt16(s32) {
         // Convert the range [-1, 1] of Float32 in [-32768, 32767] of Int16
-        let s16 = Math.floor(32768 * s32);
+        let s16 = Math.floor(((s32 + 1) / 2) * 65535 - 32767);
+
+        // Just for safety
         s16 = Math.min(32767, s16);
         s16 = Math.max(-32768, s16);
 

@@ -2,13 +2,14 @@
 
 const BUFF_SIZE = 128;
 const WINDOW_SIZE = 32;
-let IN_BUFFER = 8; // This will be updated bu the worklet once created, with the value selected by the user
+let IN_BUFFER = 8; // This will be updated by the worklet once created, with the value selected by the user
 const LIMIT_NUM = 100
 const LIMIT = false
 const NUM_PACKETS = 500; // Number of packets after which sending info to the main thread
 
 /*** Copy of class Packet from packet.js due to limitations of import inside workers ***/
 class Packet {
+
     /**
      * Method to create a JS Object given an ArrayBuffer
      *
@@ -71,7 +72,9 @@ class Packet {
     **/
     static Int16ToFloat32(s16) {
         // Convert the range [-32768, 32767] of Int16 in [-1, 1] of Float32
-        let s32 = s16 / 32768;
+        let s32 = ((s16 + 32767) / 65535) * 2 - 1;
+
+        // Just for safety
         s32 = Math.min(1, s32);
         s32 = Math.max(-1, s32);
 

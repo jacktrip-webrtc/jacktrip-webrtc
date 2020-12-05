@@ -18,6 +18,9 @@ let USE_AUDIO_LOOPBACK = true;
 // RTT Measurement frequency (every RTT_PACKET_N packets send a RTT Timing measure)
 let RTT_PACKET_N = 500;
 
+// Flag to activate packetization stats - Set to -1 to deactivate it
+let LIMIT_PACKETIZATION_STATS = -1;
+
 // Peer configuration
 const configuration = {
     iceServers: [
@@ -139,6 +142,10 @@ class Client {
             packetReceivedCounter: 0,
             totalPacketCounter: 0
         };
+        this.levelOfBuffering = {}; // Object to keep track of the level of buffering of the audio datachannel
+        this.previousPacketization = undefined; // To keep track of the packetizatio level up to now
+        this.levelOfBufferingByPacket = [] // Object to keep track of when the level of buffering of the audio datachannel for each packet
+        this.channelType = document.getElementById('audio-source-button').getAttribute('data-channel-list').length;
         this.statsInterval = undefined; // Interval to update displayed stats
         this.dim = document.getElementById('playoutBufferSize').value; // Get the dim of the playout buffer_size
         this.min = this.dim;
@@ -348,6 +355,51 @@ class Client {
 
                                 // Send the ArrayBuffer
                                 this.dataChannel.send(buf);
+
+                                // Packetization stats
+                                if(packet_n < LIMIT_PACKETIZATION_STATS + 1) {
+
+                                    // Check the amount of buffered packets
+                                    let bufferedAmount = this.dataChannel.bufferedAmount;
+
+                                    // Check if it is the first packet
+                                    if(this.previousPacketization == undefined) {
+                                        this.previousPacketization = {
+                                            val: bufferedAmount,
+                                            packet_n: packet_n
+                                        }
+                                    }
+                                    else if(bufferedAmount <= this.previousPacketization.val) {
+                                        // If the current amount of buffered packets is below the previous one => packets have been sent
+                                        let n = this.previousPacketization.val;
+                                        if(this.channelType == 1) {
+                                            // mono
+                                            n /= 265; // 265 Bytes is the size of a mono packet
+                                        }
+                                        else {
+                                            // stereo
+                                            n /= 521; // 521 Bytes is the size of a stereo packet
+                                        }
+
+                                        // Save the buffering stat
+                                        this.levelOfBuffering[n] = this.levelOfBuffering[n] == undefined ? 1 : this.levelOfBuffering[n] + 1;
+                                        this.levelOfBufferingByPacket.push({
+                                            val: n,
+                                            packet_n: this.previousPacketization.packet_n
+                                        });
+                                        this.previousPacketization = {
+                                            val: bufferedAmount,
+                                            packet_n: packet_n
+                                        }
+                                    }
+                                    else {
+                                        // Else update the number of buffered packets
+                                        this.previousPacketization = {
+                                            val: bufferedAmount,
+                                            packet_n: packet_n
+                                        }
+                                    }
+                                }
                             }
 
                             // Update the created pakcet num (for loopback reasons)

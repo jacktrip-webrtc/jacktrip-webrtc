@@ -1149,7 +1149,15 @@ socket.on('room-checked', (exists, error) => {
 
             // Check if it is present a value from local storage else use default value of 8
             if(localStorage['playoutBufferSize']) {
-                sliderValue.innerHTML = localStorage['playoutBufferSize'];
+                let pbs = parseInt(localStorage['playoutBufferSize']);
+
+                // Check if the number is valid
+                if(pbs >=2 && pbs <=30) {
+                    sliderValue.innerHTML = localStorage['playoutBufferSize'];
+                }
+                else {
+                    sliderValue.innerHTML = 8;
+                }
             }
             else {
                 sliderValue.innerHTML = 8;
