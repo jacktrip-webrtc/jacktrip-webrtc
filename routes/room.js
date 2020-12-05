@@ -20,6 +20,7 @@ const Timeout = require(`${root}/lib/timeout.js`);
 /*** Global variables ***/
 const staticFolder = path.join(`${root}`,config.staticFolder);
 const timeoutSec = config.timeoutSec;
+const environment = config.environment;
 let rooms = {};
 
 /*** Custom functions ***/
@@ -85,16 +86,24 @@ const router = express.Router();
 router
 .route('/')
 .get((req, res, next) => {
-  let data = mapElements(rooms, x => ({
-      id: x.id,
-      url: x.url,
-      num_users: x.num_users
-    })
-  );
+  if(environment === 'development'){
+    let data = mapElements(rooms, x => ({
+        id: x.id,
+        url: x.url,
+        num_users: x.num_users
+      })
+    );
 
-  res
-    .status(200)
-    .send(utils.createHttpResponse(200, {rooms: data}));
+    res
+      .status(200)
+      .send(utils.createHttpResponse(200, {rooms: data}));
+  }
+  else {
+    // Block access to this end point if environment is not 'development'
+    res
+      .status(404)
+      .end();
+  }
 })
 .post((req, res, next) => {
   // Create a room

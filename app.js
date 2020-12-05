@@ -168,3 +168,10 @@ addRoute('/room');
 if(opt_static) {
   app.use(express.static(staticFolder));
 }
+
+/*** Default 404 handler ***/
+app.get('*', (req, res, next) => {
+  res
+    .status(404)
+    .end();
+})
