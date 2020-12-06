@@ -1,0 +1,17 @@
+{
+  "name": "jacktrip-webrtc-client",
+  "version": "1.0.0",
+  "description": "JackTrip WebRTC client - JackTrip WebRTC is an HTML5 implementation of Jacktrip for the web browser",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Matteo Sacchetto",
+    "url": "https://github.com/matteosacchetto"
+  },
+  "contributors": [],
+  "license": "GPL-3.0",
+  "dependencies": {
+    "socket.io-client": "^2.3.0"
+  }
+}

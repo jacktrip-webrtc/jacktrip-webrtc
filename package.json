@@ -1,0 +1,36 @@
+{
+  "name": "jacktrip-webrtc-server",
+  "version": "1.0.0",
+  "description": "JackTrip WebRTC server - JackTrip WebRTC is an HTML5 implementation of Jacktrip for the web browser",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Matteo Sacchetto",
+    "url": "https://github.com/matteosacchetto"
+  },
+  "contributors": [],
+  "license": "GPL-3.0",
+  "dependencies": {
+    "app-root-path": "^3.0.0",
+    "body-parser": "^1.19.0",
+    "compression": "^1.7.4",
+    "cron": "^1.8.2",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-rate-limit": "^5.0.0",
+    "helmet": "^3.21.2",
+    "http-status-codes": "^1.4.0",
+    "morgan": "^1.9.1",
+    "pem": "^1.14.4",
+    "socket.io": "^2.3.0",
+    "url-join": "^4.0.1",
+    "which": "^2.0.2",
+    "winston": "^3.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.1"
+  }
+}

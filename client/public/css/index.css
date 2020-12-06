@@ -1,0 +1,15 @@
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-image: linear-gradient( 135deg, #43CBFF 10%, #9708CC 100%);
+}
+
+.my-vh-100 {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+}
+
+.text-gradient {
+    background: linear-gradient( 135deg, #43CBFF 10%, #9708CC 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}

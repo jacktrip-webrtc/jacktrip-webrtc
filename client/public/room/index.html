@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Room</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/room/index.css">
+
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+    <script src="/js/room/util.js" charset="utf-8"></script>
+    <script src="/js/room/packet.js" charset="utf-8"></script>
+    <script src="/js/room/client.js" charset="utf-8"></script>
+    <script src="/socket.io/socket.io.js" charset="utf-8"></script>
+  </head>
+  <body>
+    <div class="sticky-top">
+        <!-- Position it -->
+        <div id="messages" class="position-absolute pt-2 custom-message-conatiner">
+
+        </div>
+    </div>
+
+    <div class="container-fluid my-vh-100">
+        <div id="stream-elements-container" class="my-vh-100 w-100 d-none">
+            <div class="d-flex flex-row flex-wrap w-100 py-2" id="stream-elements">
+                <div class="embed-responsive embed-responsive-4by3 w-100 col-lg-4 col-md-6 col-sm-12 py-0 px-0 bg-black rounded">
+                    <video class="embed-responsive-item" id="local-video" autoplay muted></video>
+                    <div id="local-name" class="embed-responsive-item w-100 h-100">
+                        <div class="position-absolute bottom-left px-2 py-1 d-flex flex-row rounded mb-1 ml-1 bg-custom text-small">
+                            <p id="local-name-display" class="mb-0 text-white"></p>
+                        </div>
+                    </div>
+                    <div id="local-mute-message" class="embed-responsive-item w-100 h-100 invisible">
+                        <div class="position-absolute bottom-right px-2 py-1 d-flex flex-row rounded mb-1 mr-1 bg-custom text-small">
+                            <i class="fas fa-microphone-slash text-danger my-auto mr-1"></i>
+                            <p class="mb-0 text-white">Muted</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="joinAudioModal" data-backdrop="static" data-focus="true" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body h-50 px-3 py-2">
+                        <div id="audio-options-carousel" class="carousel slide pt-2 d-inline-flex flex-column w-100" data-ride="carousel" data-interval="false">
+                            <div id="audio-options-carousel-content" class="carousel-inner h-100" role="listbox" style="overflow: visible;">
+                                <ol id="modal-indicators" class="carousel-indicators mb-0">
+                                        <li data-target="#audio-options-carousel" data-slide-to="0" class="active bg-blu"></li>
+                                        <li data-target="#audio-options-carousel" data-slide-to="1" class="bg-blu"></li>
+                                        <li data-target="#audio-options-carousel" data-slide-to="2" class="bg-blu"></li>
+                                        <li data-target="#audio-options-carousel" data-slide-to="3" class="bg-blu"></li>
+                                </ol>
+                                <div class="carousel-item active opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">Video settings</h4>
+                                    </div>
+                                    <div class="embed-responsive embed-responsive-4by3 w-100 py-0 px-0 bg-black mx-auto my-3 rounded">
+                                        <video class="embed-responsive-item" id="modal-video" autoplay muted></video>
+                                    </div>
+                                    <div class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Webcam <i class="fas fa-video"></i></p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="video-input-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select webcam <i class="fas fa-sort-dow"></i>
+                                          </button>
+                                          <div id="video-input" class="dropdown-menu dropdown-input-output" aria-labelledby="dropdownMenuButton">
+
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="" id="join-video-muted" onclick="toggleJoinWithVideoMuted()">
+                                            <label class="form-check-label" for="join-video-muted">
+                                                Join without camera
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="" id="flip-video" onclick="toggleFlipVideo()">
+                                            <label class="form-check-label" for="flip-video">
+                                                Flip video
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="carousel-item opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">Audio settings</h4>
+                                    </div>
+                                    <div class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Microphone <i class="fas fa-microphone"></i></p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="audio-input-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select microphone
+                                          </button>
+                                          <div id="audio-input" class="dropdown-menu dropdown-input-output" aria-labelledby="dropdownMenuButton">
+
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex mb-3">
+                                        <div class="col-5 col-sm-4">
+                                            <!-- Spacing -->
+                                        </div>
+                                        <div class="col-7 col-sm-8 px-0 d-flex flex-row">
+                                            <div class="col-7 px-0">
+                                                <meter id="modal-meter" class="w-100 ph-meter" value="-29" min="-29" max="6" optimum="-10" low="-6" high="-1"></meter>
+                                            </div>
+                                            <div class="col-5 text-center">
+                                                <p class="my-0">
+                                                    <span id="modal-meter-level">—</span> dB
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-row mb-3">
+                                        <p class="my-auto col-5 col-sm-4">Select source</p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="audio-source-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select channel
+                                          </button>
+                                          <div id="audio-source" class="dropdown-menu dropdown-source" aria-labelledby="dropdownMenuButton">
+                                            <a class="dropdown-item" data-channel-list="0">1 (Mono)</a>
+                                            <a class="dropdown-item" data-channel-list="1">2 (Mono)</a>
+                                            <a class="dropdown-item" data-channel-list="0,1">1 & 2 (Stereo)</a>
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <div id="audio-out-activate" class="d-flex flex-row mb-3">
+                                        <div class="col-12">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="customSwitch1" onclick="toggleActivateOutputSelection()">
+                                                <label class="custom-control-label" for="customSwitch1">Activate speaker selection</label><i class="fas fa-exclamation-triangle text-warning my-auto ml-2" data-toggle="tooltip" data-placement="bottom" data-title="Activating audio output selection may introduce latency" data-original-title="" title=""></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="audio-out-div" class="flex-row mb-3 collapse">
+                                        <p class="my-auto col-5 col-sm-4">Speaker <i class="fas fa-volume-up"></i></p>
+                                        <div class="dropdown col-7 col-sm-8 px-0">
+                                          <button id="audio-output-button" class="btn btn-blu w-100 dropdown-toggle" type="button" data-boundary="scrollParent" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Select speaker <i class="fas fa-sort-dow"></i>
+                                          </button>
+                                          <div id="audio-output" class="dropdown-menu dropdown-input-output" aria-labelledby="dropdownMenuButton">
+
+                                          </div>
+                                        </div>
+                                    </div>
+                                    <audio id="modal-audio"></audio>
+                                    <div class="d-flex">
+                                        <div class="col-5 col-sm-4">
+                                            <!-- Spacing -->
+                                        </div>
+                                        <div class="col-7 col-sm-8 px-0">
+                                            <button id="test-speaker" class="btn btn-blu mb-3" type="button" name="button" onclick="testSpeaker()">Test speaker</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-3 px-0">
+                                        <div class="form-check">
+                                            <p class="mb-1">Playout buffer size: <strong id="playoutBufferSizeValue"></strong></p>
+                                            <input type="range" min="2" max="30" value="50" class="slider w-100 custom-range" id="playoutBufferSize">
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="" id="join-mic-muted" onclick="toggleJoinWithAudioMuted()">
+                                            <label class="form-check-label" for="join-mic-muted">
+                                                Join with microphone muted
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <div class="carousel-item opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">Audio loopback</h4>
+                                    </div>
+                                    <div class="col-12 d-flex flex-column text-center mb-3">
+                                        <p class="my-0">
+                                            You will hear yourself after a full loop through the network passing through the server.
+                                        </p>
+                                    </div>
+                                    <div class="d-flex mb-3">
+                                        <button id="modal-test-loopback" class="btn btn-blu my-auto mx-auto" type="button" name="button" onclick="testLoopback()">Test loopback</button>
+                                    </div>
+                                    <div class="d-none mb-3">
+                                        <button id="modal-stop-loopback" class="btn btn-blu my-auto mx-auto" type="button" name="button" onclick="stopLoopback()">Stop loopback</button>
+                                    </div>
+                                    <div class="col-12 d-flex flex-column text-center mb-3">
+                                        <p class="my-0 text-danger ft-14">
+                                            <strong>Warning:</strong> depending on the audio settings it may cause feedback.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="carousel-item opt-audio">
+                                    <div class="d-flex flex-row justify-content-center mb-3">
+                                        <h4 class="h4 my-0">You are almost done</h4>
+                                    </div>
+                                    <div class="col-12 d-flex flex-column text-center mb-3">
+                                        <p class="my-0">
+                                            Select name to show
+                                        </p>
+                                    </div>
+                                    <div class="col-12 d-flex mb-3 px-0">
+                                        <div class="form-group w-100">
+                                            <input type="text" class="form-control w-100 text-body" maxlength="25" id="name" placeholder="Jon Doe" name="" value="" aria-describedby="name" onkeyup="checkName(this)">
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mb-3 px-0 text-center">
+                                        <h5>Debug options</h5>
+                                        <p class="my-0">These options are intended only for debugging purposes</p>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="customSwitch2" onclick="toggleLogging()">
+                                            <label class="custom-control-label" for="customSwitch2">Activate logging</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-row">
+                                <div id="carousel-prev" class="carousel-control-prev flex-row justify-content-start d-none">
+                                    <button class="btn btn-blu my-auto" type="button" name="button" onclick="previous()">Previous</button>
+                                </div>
+                                <div id="carousel-next" class="carousel-control-next flex-row justify-content-end">
+                                    <button class="btn btn-blu my-auto" type="button" name="button" onclick="next()">Next</button>
+                                </div>
+                                <div id="carousel-join" class="carousel-control-next flex-row justify-content-end d-none">
+                                    <button id='carousel-join-button' class="btn btn-blu my-auto" type="button" name="button" onclick="joinAudio()" disabled>Join</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="errorModal" data-backdrop="static" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row justify-content-center mb-3">
+                            <i class="fas fa-exclamation-triangle my-auto mr-2 text-danger"></i>
+                            <h4 class="h4 my-0">Error</h4>
+                        </div>
+                        <div class="d-flex flex-row justify-content-center mb-4">
+                            <p id="errorMessage" class="text-center leading my-0"></p>
+                        </div>
+                        <a class="btn btn-blu mx-auto" href="/" >Go back to home</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="settingsModal" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row mb-3">
+                            <h4 class="h4 my-0 mx-auto">Loopback settings</h4>
+                            <button type="button" class="close btn-no-outline" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div id="audio-loopback-info" class="d-none flex-column">
+                            <div id="audio-loopback-btn-goup" class="btn-group mx-auto mb-3" role="group" aria-label="Basic example">
+                                <button type="button" class="btn btn-blu" onClick="setAudioLoopbackType()">Audio</button>
+                                <button type="button" class="btn btn-blu" onclick="setDataChannelLoopbackType()">Netwrok</button>
+                            </div>
+                            <div class="mb-3 d-flex flex-row">
+                                <div class="col-9 d-flex justify-content-start px-0">
+                                    <span class="mr-auto">Current audio loopback type: </span>
+                                </div>
+                                <div class="col-3 d-flex justify-content-end px-0">
+                                    <strong class="" id="audio-loopback-type">Audio</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="loopbackEntries" class="d-none flex-column">
+
+                        </div>
+
+                        <div id="loopbackMessage" class="mb-3">
+                            <p class="my-0 text-center">No user connected</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="statsModal" data-focus="true" tabindex="-1" role="dialog" aria-labelledby="joinAudioModal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                <div class="modal-content mx-2">
+                    <div class="modal-body d-flex flex-column">
+                        <div class="d-flex flex-row mb-3">
+                            <h4 class="h4 my-0 mx-auto">Stats</h4>
+                            <button type="button" class="close btn-no-outline" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div id="stats-info" class="flex-column">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-toolbar w-100 d-flex justify-content-center button-controls fixed-bottom" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group mr-2" role="group" aria-label="Mute group">
+            <button id="audioButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteAudio()"><i id="audioIcon" class="fas fa-microphone"></i></button>
+        </div>
+        <div class="btn-group ml-2" role="group" aria-label="Mute group">
+            <button id="videBoutton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="toggleMuteVideo()"><i id="videoIcon" class="fas fa-video"></i></button>
+        </div>
+    </div>
+
+    <div id="settingsToolbar" class="btn-toolbar w-25 d-flex justify-content-start button-controls fixed-bottom" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group ml-3" role="group" aria-label="Mute group">
+            <button id="settingsButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button" onclick="showSettingsModal()"><i class="fas fa-cogs"></i></button>
+        </div>
+        <span id="loopbackCounter" class="badge badge-light position-absolute badge-loopback"></span>
+        <button id="settingsButton" type="button" class="btn btn-light btn-custom rounded-circle medium-button ml-3" onclick="showStatsModal()"><i class="far fa-chart-bar"></i></button>
+    </div>
+
+    <script src="/js/room/index.js" charset="utf-8"></script>
+  </body>
+</html>
