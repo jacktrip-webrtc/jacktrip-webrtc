@@ -4,6 +4,15 @@ JackTrip WebRTC is an HTML5 implementation of [Jacktrip](https://ccrma.stanford.
 
 Multi-machine network music performance over the Internet is achieved using high quality, uncompressed, and ultra-low delay audio signal streaming. WebRTC [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) is routed through the [RTCDataChannel](https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel) in order to bypass processing (i.e., encoding) and buffering delay of the [RTCPeerConnection](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection) media channel.
 
+## Introduction to experiments
+
+This branch `/experimental` is a specific version of **jacktrip-webrtc** using new technologies for a better scalability. The code, as intended by the branch name, has been built with the purpose of testing new app enhancements, no for a public (realistic) usage. Given that, the GUI is very minimal and can be hard to understand what is happening. The video and control parts have been removed, has not interesting in the testing procedure.
+
+The main improvements in scalability are given by the usage of `SharedArrayBuffer` and `Atomics`, replacing the previous `port.postMessage` for the audio receiving procedure only. For audio trasmission, no optimizations has been found and, for that specific case only, `port.postMessage` seems working as well as `Atomics.waitAsync` which is a Google Chrome browser specific API. Moreover, the number of threads (`AudioWorklet`) is reduced to 1.
+
+If you want to take a look at the test procedure, [this](./README_JAES_paper_tests_EN.md) document could be a good introduction to the app architecture and the tools which have been used. Further information during setup and runtime can be found in the browser console.
+
+_Paolo Gastaldi_
 
 
 ## Setup
