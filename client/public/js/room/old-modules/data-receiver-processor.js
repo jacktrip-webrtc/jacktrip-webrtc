@@ -179,7 +179,7 @@ class DataReceiverProcessor extends AudioWorkletProcessor {
         this.n = 0; // Counter to decide when to start
         this.packet_n = -1; // Packet number
         this.queue = new CircularBuffer(); // CircularBuffer
-        this.begin = false; // Flag to decide whether to start or not the playback
+        this.begisin = false; // Flag to decide whether to start or not the playback
         this.terminate = false; // To signal its destruction
         this.log = false; // Flag to decide whether to send permormance statistics or not
 

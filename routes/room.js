@@ -160,6 +160,9 @@ router
   let file = path.join(staticFolder, req.baseUrl, 'index.html');
   res
     .status(200)
+    // .set('Cross-Origin-Embedder-Policy', 'require-corp')
+    // .set('Cross-Origin-Opener-Policy', 'same-origin')
+    // .set('X-Content-Type-Options', 'nosniff')
     .sendFile(file);
 });
 

@@ -20,8 +20,6 @@ function createRoom() {
 
         window.location.assign(url);
     })
-    .catch((error) => {
-        // handle error
-        console.error(error);
-    })
+    // handle error
+    .catch(console.error);
 }

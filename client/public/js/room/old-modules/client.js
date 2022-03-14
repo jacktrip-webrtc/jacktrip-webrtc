@@ -30,6 +30,16 @@ const configuration = {
     ]
 };
 
+// Data (audio) channel configuration
+const dataChannelConfiguration = {
+    // maxPacketLifeTime, maxRetransmits
+    // maxPacketLifeTime: 0, // [ms] amount of time taken by the browser to send a packet
+    bufferedAmountLowThreshold: 0,
+    maxRetransmits: 0,
+    ordered: false,
+    protocol: 'raw'
+}
+
 // Peer offer options
 const offerOptions = {
     offerToReceiveAudio: 1,
@@ -39,7 +49,7 @@ const offerOptions = {
 // Audio context options
 const audioContextOptions = {
     latencyHint: 0,
-    sampleRate: 48000
+    // sampleRate: 44100 // 44100, 48000
 }
 
 // Audio context
@@ -480,7 +490,7 @@ class Client {
 
             if(!USE_MEDIA_AUDIO) {
                 // Create dataChannel (UDP - no retransmit)
-                this.dataChannel = this.peerConnection.createDataChannel('audio', {maxRetransmits: 0, ordered: false});
+                this.dataChannel = this.peerConnection.createDataChannel('audio', dataChannelConfiguration);
                 this.setUpDataChannel();
             }
         }
@@ -542,7 +552,7 @@ class Client {
         });
 
         // Remove tracks from stream
-        this.remoteAudioStream.getVideoTracks().forEach((track, index) => {
+        this.remoteAudioStream.getAudioTracks().forEach((track, index) => {
             this.remoteAudioStream.removeTrack(track);
             track.stop();
         });
@@ -582,7 +592,7 @@ class Client {
         div1.appendChild(button);
     }
 
-    setUpDataChannel() {
+    setupDataChannel() {
         // Listener for when the datachannel is opened
         this.dataChannel.addEventListener('open', event => {
             // Force the binary type to be ArrayBuffer
@@ -602,6 +612,13 @@ class Client {
 
         // Append new messages to the box of incoming messages
         this.dataChannel.addEventListener('message', event => {
+            /*
+            bind with this
+            I can use the dataChannel to send data
+            */
+            // this.dataChannel.send('test')
+            // console.log(typeof this);
+
             if(!this.loopback) {
                 // Get the ArrayBuffer
                 let buf = event.data;

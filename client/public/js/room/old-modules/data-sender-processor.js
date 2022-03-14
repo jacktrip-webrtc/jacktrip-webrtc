@@ -141,6 +141,9 @@ class DataSenderProcessor extends AudioWorkletProcessor {
             });
         }
 
+
+        console.log('sending new data');
+
         if(input.length > 0 && (!this.muted || this.audioLoopback) && !this.loopback) {
             let silent = true;
             if(this.source.channelCount === 1) {
