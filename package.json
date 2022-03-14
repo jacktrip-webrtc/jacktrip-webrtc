@@ -24,6 +24,7 @@
     "helmet": "^3.21.2",
     "http-status-codes": "^1.4.0",
     "morgan": "^1.9.1",
+    "node-turn": "0.0.6",
     "pem": "^1.14.4",
     "socket.io": "^2.3.0",
     "url-join": "^4.0.1",

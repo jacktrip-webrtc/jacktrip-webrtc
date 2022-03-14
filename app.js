@@ -1,3 +1,5 @@
+'use strict';
+
 /*** Node modules ***/
 const express = require('express');
 const http = require('http');
@@ -19,6 +21,19 @@ const which = require('which');
 const logger = require('./lib/logger.js');
 const utils = require('./lib/utils.js');
 const config = require('./lib/config.js');
+
+/*** Create app ***/
+const app = express();
+
+/**
+ * set for all routes
+ */
+app.use(function(req, res, next) {
+    res.set('Cross-Origin-Embedder-Policy', 'require-corp')
+        .set('Cross-Origin-Opener-Policy', 'same-origin')
+        .set('X-Content-Type-Options', 'nosniff');
+    next();
+});
 
 /*** Custom functions ***/
 /**
@@ -51,6 +66,28 @@ const limiter = rateLimit({
 const opt_http = config.useHttp;
 const opt_https = config.useHttps;
 const opt_static = config.useStatic;
+const opt_use_local_turn_server = config.useLocalTurnServer;
+
+if(opt_use_local_turn_server) {
+    const Turn = require('node-turn');
+    const username = 'testclient', password = 'testclient123.';
+    const turnServer = new Turn({
+        // set options
+        authMech: 'long-term',
+        credentials: {
+            username: password
+        },
+        maxPort: 44300,
+        minPort: 44300,
+    });
+
+    // config.turnServerURL = "127.0.0.1:3478";
+    // config.turnServerUsername = username;
+    // config.turnServerPassword = password;
+
+    // turnServer.start();
+    logger.info(`Turn Server running on port ${turnServer.listeningPort}`);
+}
 
 if(environment === 'development') {
   let pathOpenSSL;
@@ -83,9 +120,6 @@ if(environment === 'development') {
     pathOpenSSL: pathOpenSSL
   });
 }
-
-/*** Create app ***/
-const app = express();
 
 /*** Starting servers ***/
 if(opt_http) {
@@ -146,7 +180,7 @@ if(opt_https) {
 }
 
 /*** Define middlewares ***/
-app.use(limiter); // Apply the limit to all requests
+// app.use(limiter); // Apply the limit to all requests
 app.use(bodyParser.urlencoded({ extended: false })); // Parse application/x-www-form-urlencoded
 app.use(bodyParser.json()); // Parse application/json
 app.use(helmet());
@@ -166,7 +200,14 @@ addRoute('/room');
 
 /*** Define static folder ***/
 if(opt_static) {
-  app.use(express.static(staticFolder));
+    app.use(express.static(staticFolder, {
+        // setHeaders: function (res, path, stat) {
+        //     // headers needed to enable SharedBuffer and Worker usage on the client
+        //     res.set('Cross-Origin-Embedder-Policy', 'require-corp')
+        //     .set('Cross-Origin-Opener-Policy', 'same-origin')
+        //     .set('X-Content-Type-Options', 'nosniff');
+        // }
+}));
 }
 
 /*** Default 404 handler ***/

@@ -1,6 +1,6 @@
-'use strict'
+'use strict';
 
-function getStats() {
+export function getStats() {
     let obj = {}
     obj.timeOrigin = performance.timeOrigin;
     obj.data = performance.getEntriesByType('mark').map((el) => {
@@ -15,7 +15,7 @@ function getStats() {
     return JSON.stringify(obj);
 }
 
-function getLimitedStats(start=0, end=100) {
+export function getLimitedStats(start=0, end=100) {
     let obj = {}
     obj.timeOrigin = performance.timeOrigin;
     obj.data = performance.getEntriesByType('mark')
@@ -44,4 +44,12 @@ function getLimitedStats(start=0, end=100) {
     });
 
     return JSON.stringify(obj);
+}
+
+export function isEmpty(obj) {
+    return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
+export function getRoomId(window) {
+    return window.location.pathname.split('/').pop();
 }

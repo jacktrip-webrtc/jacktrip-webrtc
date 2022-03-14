@@ -1,5 +1,11 @@
-'use strict'
+'use strict';
 
+/**
+ * @author Sacchetto Matteo
+ * 
+ * original packet class
+ * not used anymore w/ Paolo's architecture
+ */
 class Packet {
 
     /**
